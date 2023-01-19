@@ -214,17 +214,32 @@ bool cpu_supports_neon();
 
 #ifdef PLATFORM_X86
 enum YEncDecIsaLevel {
+	ISA_GENERIC = 0,
 	ISA_FEATURE_POPCNT = 0x1,
 	ISA_FEATURE_LZCNT = 0x2,
 	ISA_LEVEL_SSE2 = 0x100,
 	ISA_LEVEL_SSSE3 = 0x200,
 	ISA_LEVEL_SSE41 = 0x300,
 	ISA_LEVEL_SSE4_POPCNT = 0x301,
+	ISA_LEVEL_PCLMUL = 0x340,
 	ISA_LEVEL_AVX = 0x381, // same as above, just used as a differentiator for `cpu_supports_isa`
 	ISA_LEVEL_AVX2 = 0x403, // also includes BMI1/2 and LZCNT
+	ISA_LEVEL_VPCLMUL = 0x440,
 	ISA_LEVEL_AVX3 = 0x503, // SKX variant; AVX512VL + AVX512BW
 	ISA_LEVEL_VBMI2 = 0x603 // ICL
 };
+#elif defined(PLATFORM_ARM)
+enum YEncDecIsaLevel {
+	ISA_GENERIC = 0,
+	ISA_FEATURE_CRC = 8,
+	ISA_LEVEL_NEON = 0x1000
+};
+#else
+enum YEncDecIsaLevel {
+	ISA_GENERIC = 0
+};
+#endif
+#ifdef PLATFORM_X86
 #ifdef _MSC_VER
 // native tuning not supported in MSVC
 # define ISA_NATIVE ISA_LEVEL_SSE2

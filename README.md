@@ -22,9 +22,10 @@ A build file/project can be created using CMake.
 mkdir build
 cd build
 cmake ..
+cmake --build . --config Release
 ```
 
-After compilation, a shared and static library should be generated, as well as a sample CLI application.
+After compilation, a shared and static library should be generated, as well as a benchmark and sample CLI application.
 
 ## Build Options
 

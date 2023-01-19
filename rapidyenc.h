@@ -11,6 +11,32 @@ extern "C" {
 # define RAPIDYENC_API
 #endif
 
+/**
+ * Version, in 0xMMmmpp format, where MM=major version, mm=minor version, pp=patch version
+ */
+#define RAPIDYENC_VERSION 0x010000
+RAPIDYENC_API int rapidyenc_version(void); // returns RAPIDYENC_VERSION
+
+/**
+ * For determining which kernel was selected for the current CPU
+ * Note that if this was compiled with the BUILD_NATIVE option set, values may not correspond with any of those below
+ */
+#define RYKERN_GENERIC 0   // generic kernel chosen
+// x86 specific encode/decode kernels
+#define RYKERN_SSE2 0x100
+#define RYKERN_SSSE3 0x200
+#define RYKERN_AVX 0x381
+#define RYKERN_AVX2 0x403
+#define RYKERN_VBMI2 0x603
+// ARM specific encode/decode kernels
+#define RYKERN_NEON 0x1000
+// x86 specific CRC32 kernels
+#define RYKERN_PCLMUL 0x340
+#define RYKERN_VPCLMUL 0x440
+// ARM specific CRC32 kernels
+#define RYKERN_ARMCRC 8
+
+
 /***** ENCODE *****/
 /**
  * Initialise global state of the encoder (sets up lookup tables and performs CPU detection).
@@ -45,8 +71,15 @@ RAPIDYENC_API size_t rapidyenc_encode_ex(int line_size, int* column, const void*
 /**
  * Returns the maximum possible length of yEnc encoded output, given an input of `length` bytes
  * This function does also include additional padding needed by rapidyenc's implementation.
+ * Note that this function doesn't require `rapidyenc_encode_init` to be called beforehand
  */
 RAPIDYENC_API size_t rapidyenc_encode_max_length(size_t length, int line_size);
+
+/**
+ * Returns the kernel/ISA level used for encoding
+ * Values correspond with RYKERN_* definitions above
+ */
+RAPIDYENC_API int rapidyenc_encode_kernel();
 
 
 /***** DECODE *****/
@@ -86,11 +119,19 @@ RAPIDYENC_API void rapidyenc_decode_init(void);
  * yEnc decode the buffer at `src` (of length `src_length`) and write it to `dest`
  * Returns the number of bytes written to `dest`
  * 
+ * This is effectively an alias for `rapidyenc_decode_ex(1, src, dest, src_length, NULL)`
+ */
+RAPIDYENC_API size_t rapidyenc_decode(const void* src, void* dest, size_t src_length);
+
+/**
+ * yEnc decode the buffer at `src` (of length `src_length`) and write it to `dest`
+ * Returns the number of bytes written to `dest`
+ * 
  * If `is_raw` is non-zero, will also handle NNTP dot unstuffing
  * `state` can be used to track the decoder state, if incremental decoding is desired. Set to NULL if tracking is not needed
  * `src` and `dest` are allowed to point to the same location for in-situ decoding, otherwise `dest` is assumed to be at least `src_length` in size
  */
-RAPIDYENC_API size_t rapidyenc_decode(int is_raw, const void* src, void* dest, size_t src_length, RapidYencDecoderState* state);
+RAPIDYENC_API size_t rapidyenc_decode_ex(int is_raw, const void* src, void* dest, size_t src_length, RapidYencDecoderState* state);
 
 /**
  * Like `rapidyenc_decode`, but stops decoding when a yEnc/NNTP end sequence is found
@@ -102,6 +143,12 @@ RAPIDYENC_API size_t rapidyenc_decode(int is_raw, const void* src, void* dest, s
  * Whilst `src` and `dest` can point to the same memory, the pointers themselves should be different. In other words, `**src == **dest` is fine, but `*src == *dest` is not
  */
 RAPIDYENC_API RapidYencDecoderEnd rapidyenc_decode_incremental(const void** src, void** dest, size_t src_length, RapidYencDecoderState* state);
+
+/**
+ * Returns the kernel/ISA level used for decoding
+ * Values correspond with RYKERN_* definitions above
+ */
+RAPIDYENC_API int rapidyenc_decode_kernel();
 
 
 /***** CRC32 *****/
@@ -129,8 +176,11 @@ RAPIDYENC_API uint32_t rapidyenc_crc_combine(uint32_t crc1, const uint32_t crc2,
  */
 RAPIDYENC_API uint32_t rapidyenc_crc_zeros(uint32_t init_crc, size_t length);
 
-// TODO: consider whether to allow CPUID overrides
-// TODO: functions for returning the kernel selected
+/**
+ * Returns the kernel/ISA level used for CRC32 computation
+ * Values correspond with RYKERN_* definitions above
+ */
+RAPIDYENC_API int rapidyenc_crc_kernel();
 
 #ifdef __cplusplus
 }

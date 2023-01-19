@@ -8,6 +8,10 @@
 
 #include "rapidyenc.h"
 
+int rapidyenc_version(void) {
+	return RAPIDYENC_VERSION;
+}
+
 /*** ENCODER ***/
 #include "src/encoder.h"
 void rapidyenc_encode_init(void) {
@@ -42,6 +46,10 @@ size_t rapidyenc_encode_ex(int line_size, int* column, const void* __restrict sr
 	return _do_encode(line_size, column, src, dest, src_length, is_end);
 }
 
+int rapidyenc_encode_kernel() {
+	return encode_isa_level();
+}
+
 /*** DECODER ***/
 #include "src/decoder.h"
 void rapidyenc_decode_init(void) {
@@ -51,7 +59,11 @@ void rapidyenc_decode_init(void) {
 	decoder_init();
 }
 
-size_t rapidyenc_decode(int is_raw, const void* src, void* dest, size_t src_length, RapidYencDecoderState* state) {
+size_t rapidyenc_decode(const void* src, void* dest, size_t src_length) {
+	return rapidyenc_decode_ex(1, src, dest, src_length, NULL);
+}
+
+size_t rapidyenc_decode_ex(int is_raw, const void* src, void* dest, size_t src_length, RapidYencDecoderState* state) {
 	RapidYencDecoderState unusedState = RYDEC_STATE_CRLF;
 	if(!state) state = &unusedState;
 	return do_decode(is_raw, (const unsigned char*)src, (unsigned char*)dest, src_length, (YencDecoderState*)state);
@@ -61,6 +73,10 @@ RapidYencDecoderEnd rapidyenc_decode_incremental(const void** src, void** dest, 
 	RapidYencDecoderState unusedState = RYDEC_STATE_CRLF;
 	if(!state) state = &unusedState;
 	return (RapidYencDecoderEnd)do_decode_end((const unsigned char**)src, (unsigned char**)dest, src_length, (YencDecoderState*)state);
+}
+
+int rapidyenc_decode_kernel() {
+	return decode_isa_level();
 }
 
 /*** CRC32 ***/
@@ -81,3 +97,8 @@ uint32_t rapidyenc_crc_combine(uint32_t crc1, const uint32_t crc2, size_t length
 uint32_t rapidyenc_crc_zeros(uint32_t init_crc, size_t length) {
 	return do_crc32_zeros(init_crc, length);
 }
+
+int rapidyenc_crc_kernel() {
+	return crc32_isa_level();
+}
+

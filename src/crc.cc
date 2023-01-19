@@ -8,8 +8,10 @@ static uint32_t do_crc32_incremental_generic(const void* data, size_t length, ui
 	crc->Compute(data, length, &tmp);
 	return (uint32_t)tmp;
 }
-crc_func _do_crc32_incremental = &do_crc32_incremental_generic;
-
+extern "C" {
+	crc_func _do_crc32_incremental = &do_crc32_incremental_generic;
+	int _crc32_isa = ISA_GENERIC;
+}
 
 
 uint32_t do_crc32_combine(uint32_t crc1, uint32_t crc2, size_t len2) {
@@ -24,9 +26,9 @@ uint32_t do_crc32_zeros(uint32_t crc1, size_t len) {
 	return (uint32_t)crc_;
 }
 
-void crc_clmul_set_funcs(crc_func*);
-void crc_clmul256_set_funcs(crc_func*);
-void crc_arm_set_funcs(crc_func*);
+void crc_clmul_set_funcs();
+void crc_clmul256_set_funcs();
+void crc_arm_set_funcs();
 
 #ifdef PLATFORM_X86
 int cpu_supports_crc_isa();
@@ -67,9 +69,9 @@ void crc_init() {
 #ifdef PLATFORM_X86
 	int support = cpu_supports_crc_isa();
 	if(support == 2)
-		crc_clmul256_set_funcs(&_do_crc32_incremental);
+		crc_clmul256_set_funcs();
 	else if(support == 1)
-		crc_clmul_set_funcs(&_do_crc32_incremental);
+		crc_clmul_set_funcs();
 #endif
 #ifdef PLATFORM_ARM
 # ifdef __APPLE__
@@ -97,7 +99,7 @@ void crc_init() {
 		false
 # endif
 	) {
-		crc_arm_set_funcs(&_do_crc32_incremental);
+		crc_arm_set_funcs();
 	}
 #endif
 }
