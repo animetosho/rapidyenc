@@ -3,11 +3,78 @@
 #include "interface.h"
 crcutil_interface::CRC* crc = NULL;
 
+#if defined(PLATFORM_X86) && !defined(__ILP32__)
 static uint32_t do_crc32_incremental_generic(const void* data, size_t length, uint32_t init) {
+	// use optimised ASM on x86 platforms
 	crcutil_interface::UINT64 tmp = init;
 	crc->Compute(data, length, &tmp);
 	return (uint32_t)tmp;
 }
+#else
+// slice-by-8 algorithm from https://create.stephan-brumme.com/crc32/
+static uint32_t* HEDLEY_RESTRICT crc_slice8_table;
+static uint32_t do_crc32_incremental_generic(const void* data, size_t length, uint32_t init) {
+	uint32_t crc = ~init;
+	uint32_t* current = (uint32_t*)data;
+	const int UNROLL_CYCLES = 2; // must be power of 2
+	uint32_t* end = current + ((length/sizeof(uint32_t)) & -(UNROLL_CYCLES*2));
+	while(current != end) {
+		for(int unroll=0; unroll<UNROLL_CYCLES; unroll++) { // two cycle loop unroll
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+# ifdef __GNUC__
+			uint32_t one = *current++ ^ __builtin_bswap32(crc);
+# else
+			uint32_t one = *current++ ^ (
+				(crc >> 24) |
+				((crc >> 16) & 0xff00) |
+				((crc & 0xff00) << 16) |
+				((crc & 0xff) << 24)
+			);
+# endif
+			uint32_t two = *current++;
+			crc = crc_slice8_table[two & 0xFF] ^
+			      crc_slice8_table[0x100L + ((two >> 8) & 0xFF)] ^
+			      crc_slice8_table[0x200L + ((two >> 16) & 0xFF)] ^
+			      crc_slice8_table[0x300L + ((two >> 24) & 0xFF)] ^
+			      crc_slice8_table[0x400L + (one & 0xFF)] ^
+			      crc_slice8_table[0x500L + ((one >> 8) & 0xFF)] ^
+			      crc_slice8_table[0x600L + ((one >> 16) & 0xFF)] ^
+			      crc_slice8_table[0x700L + ((one >> 24) & 0xFF)];
+#else
+			uint32_t one = *current++ ^ crc;
+			uint32_t two = *current++;
+			crc = crc_slice8_table[(two >> 24) & 0xFF] ^
+			      crc_slice8_table[0x100L + ((two >> 16) & 0xFF)] ^
+			      crc_slice8_table[0x200L + ((two >> 8) & 0xFF)] ^
+			      crc_slice8_table[0x300L + (two & 0xFF)] ^
+			      crc_slice8_table[0x400L + ((one >> 24) & 0xFF)] ^
+			      crc_slice8_table[0x500L + ((one >> 16) & 0xFF)] ^
+			      crc_slice8_table[0x600L + ((one >> 8) & 0xFF)] ^
+			      crc_slice8_table[0x700L + (one & 0xFF)];
+#endif
+		}
+	}
+	uint8_t* current8 = (uint8_t*)current;
+	for(size_t i=0; i < (length & (sizeof(uint32_t)*2 * UNROLL_CYCLES -1)); i++) {
+		crc = (crc >> 8) ^ crc_slice8_table[(crc & 0xFF) ^ current8[i]];
+	}
+	return ~crc;
+}
+static void generate_crc32_slice8_table() {
+	crc_slice8_table = (uint32_t*)malloc(8*256*sizeof(uint32_t));
+	for(int byte=0; byte<8; byte++)
+		for(int v=0; v<256; v++) {
+			uint32_t crc = v;
+			for(int i = byte; i >= 0; i--) {
+				for(int j = 0; j < 8; j++) {
+					crc = (crc >> 1) ^ (-(crc & 1) & 0xEDB88320);
+				}
+			}
+			crc_slice8_table[byte*256 + v] = crc;
+		}
+}
+#endif
+
 extern "C" {
 	crc_func _do_crc32_incremental = &do_crc32_incremental_generic;
 	int _crc32_isa = ISA_GENERIC;
@@ -65,6 +132,10 @@ void crc_init() {
 	crc = crcutil_interface::CRC::Create(
 		0xEDB88320, 0, 32, true, 0, 0, 0, 0, NULL);
 	// instance never deleted... oh well...
+	
+#if !defined(PLATFORM_X86) || defined(__ILP32__)
+	generate_crc32_slice8_table();
+#endif
 	
 #ifdef PLATFORM_X86
 	int support = cpu_supports_crc_isa();
