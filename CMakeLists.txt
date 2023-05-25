@@ -158,11 +158,6 @@ else()
 		if(IS_ARM64)
 			set_source_files_properties(${SRC_DIR}/crc_arm.cc PROPERTIES COMPILE_OPTIONS -march=armv8-a+crc)
 		endif()
-		
-		CHECK_INCLUDE_FILE_CXX("sys/auxv.h" COMPILER_HAS_AUXV)
-		if(NOT COMPILER_HAS_AUXV)
-			add_compile_definitions(MISSING_AUXV=1)
-		endif()
 	endif()
 endif()
 
