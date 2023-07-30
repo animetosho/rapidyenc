@@ -43,6 +43,12 @@ Functions documented in the [header file](rapidyenc.h).
 
 [cli.c](tool/cli.c) is a simple command-line application which encodes/decodes stdin to stdout. It demonstrates how to do incremental encoding/decoding/CRC32 using this library.
 
+# Other Language Bindings
+
+* [node-yencode](https://github.com/animetosho/node-yencode): for NodeJS/Bun
+* [go-yencode](https://github.com/mnightingale/go-yencode): for Golang
+* [sabctools](https://github.com/sabnzbd/sabctools): for Python (Sabnzbd specific binding)
+
 Algorithm
 =========
 
