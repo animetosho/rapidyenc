@@ -8,6 +8,8 @@ include(CheckCXXCompilerFlag)
 include(CheckIncludeFileCXX)
 include(CheckCXXSymbolExists)
 
+set(CMAKE_CXX_STANDARD 98)
+
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -108,6 +110,7 @@ else()
 	if(NOT ${CMAKE_BUILD_TYPE} MATCHES "Debug")
 		add_compile_options(-fomit-frame-pointer)
 	endif()
+	add_compile_definitions(_POSIX_C_SOURCE=200112L)
 endif()
 
 add_library(rapidyenc OBJECT ${RAPIDYENC_SOURCES} ${CRCUTIL_SOURCES})
