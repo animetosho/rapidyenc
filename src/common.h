@@ -241,6 +241,11 @@ enum YEncDecIsaLevel {
 	ISA_FEATURE_CRC = 8,
 	ISA_LEVEL_NEON = 0x1000
 };
+#elif defined(__riscv)
+enum YEncDecIsaLevel {
+	ISA_GENERIC = 0,
+	ISA_LEVEL_RVV = 0x10000
+};
 #else
 enum YEncDecIsaLevel {
 	ISA_GENERIC = 0
@@ -277,6 +282,16 @@ enum YEncDecIsaLevel {
 
 int cpu_supports_isa();
 #endif // PLATFORM_X86
+
+
+#ifdef __riscv
+bool cpu_supports_rvv();
+#endif
+#if defined(__riscv_vector) && defined(HEDLEY_GCC_VERSION) && !HEDLEY_GCC_VERSION_CHECK(13,0,0)
+// GCC added RVV intrinsics in GCC13
+# undef __riscv_vector
+#endif
+
 
 #include <string.h>
 #if !defined(_MSC_VER) || defined(_STDINT) || _MSC_VER >= 1900

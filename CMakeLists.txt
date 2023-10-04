@@ -39,6 +39,12 @@ if (${TARGET_ARCH} MATCHES "arm|ARM|aarch64|arm64|ARM64")
 		set(IS_ARM32 TRUE)
 	endif()
 endif()
+if (${TARGET_ARCH} MATCHES "riscv64|rv64")
+	set(IS_RISCV64 TRUE)
+endif()
+if (${TARGET_ARCH} MATCHES "riscv32|rv32")
+	set(IS_RISCV32 TRUE)
+endif()
 
 if(DISABLE_AVX256)
 	add_compile_definitions(YENC_DISABLE_AVX256=1)
@@ -85,6 +91,7 @@ set(RAPIDYENC_SOURCES
 	${SRC_DIR}/encoder_vbmi2.cc
 	${SRC_DIR}/decoder_vbmi2.cc
 	${SRC_DIR}/encoder_neon.cc
+	${SRC_DIR}/encoder_rvv.cc
 	${SRC_DIR}/${DECODER_NEON_FILE}
 	${SRC_DIR}/crc_folding.cc
 	${SRC_DIR}/crc_folding_256.cc
@@ -165,6 +172,19 @@ if(NOT MSVC OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 		endif()
 		if(IS_ARM64)
 			set_source_files_properties(${SRC_DIR}/crc_arm.cc PROPERTIES COMPILE_OPTIONS -march=armv8-a+crc)
+		endif()
+	endif()
+	
+	if(IS_RISCV64)
+		CHECK_CXX_COMPILER_FLAG("-march=rv64gcv" COMPILER_SUPPORTS_RVV)
+		if(COMPILER_SUPPORTS_RVV)
+			set_source_files_properties(${SRC_DIR}/encoder_rvv.cc PROPERTIES COMPILE_OPTIONS -march=rv64gcv)
+		endif()
+	endif()
+	if(IS_RISCV32)
+		CHECK_CXX_COMPILER_FLAG("-march=rv32gcv" COMPILER_SUPPORTS_RVV)
+		if(COMPILER_SUPPORTS_RVV)
+			set_source_files_properties(${SRC_DIR}/encoder_rvv.cc PROPERTIES COMPILE_OPTIONS -march=rv32gcv)
 		endif()
 	endif()
 endif()
