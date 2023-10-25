@@ -121,7 +121,13 @@ else()
 	if(NOT ${CMAKE_BUILD_TYPE} MATCHES "Debug")
 		add_compile_options(-fomit-frame-pointer)
 	endif()
-	add_compile_definitions(_POSIX_C_SOURCE=200112L)
+	
+	# posix_memalign may require _POSIX_C_SOURCE, but MacOS might not like it
+	include(CheckSymbolExists)
+	check_symbol_exists(posix_memalign "stdlib.h" HAVE_MEMALIGN)
+	if(NOT HAVE_MEMALIGN)
+		add_compile_definitions(_POSIX_C_SOURCE=200112L)
+	endif()
 endif()
 
 add_library(rapidyenc OBJECT ${RAPIDYENC_SOURCES} ${CRCUTIL_SOURCES})
