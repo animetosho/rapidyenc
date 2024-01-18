@@ -11,67 +11,115 @@ static uint32_t do_crc32_incremental_generic(const void* data, size_t length, ui
 	return (uint32_t)tmp;
 }
 #else
-// slice-by-8 algorithm from https://create.stephan-brumme.com/crc32/
-static uint32_t* HEDLEY_RESTRICT crc_slice8_table;
-static uint32_t do_crc32_incremental_generic(const void* data, size_t length, uint32_t init) {
-	uint32_t crc = ~init;
-	uint32_t* current = (uint32_t*)data;
-	const int UNROLL_CYCLES = 2; // must be power of 2
-	uint32_t* end = current + ((length/sizeof(uint32_t)) & -(UNROLL_CYCLES*2));
-	while(current != end) {
-		for(int unroll=0; unroll<UNROLL_CYCLES; unroll++) { // two cycle loop unroll
+static uint32_t* HEDLEY_RESTRICT crc_slice_table;
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-# ifdef __GNUC__
-			uint32_t one = *current++ ^ __builtin_bswap32(crc);
+# if defined(__GNUC__) || defined(__clang__)
+#  define bswap32 __builtin_bswap32
 # else
-			uint32_t one = *current++ ^ (
-				(crc >> 24) |
-				((crc >> 16) & 0xff00) |
-				((crc & 0xff00) << 16) |
-				((crc & 0xff) << 24)
-			);
-# endif
-			uint32_t two = *current++;
-			crc = crc_slice8_table[two & 0xFF] ^
-			      crc_slice8_table[0x100L + ((two >> 8) & 0xFF)] ^
-			      crc_slice8_table[0x200L + ((two >> 16) & 0xFF)] ^
-			      crc_slice8_table[0x300L + ((two >> 24) & 0xFF)] ^
-			      crc_slice8_table[0x400L + (one & 0xFF)] ^
-			      crc_slice8_table[0x500L + ((one >> 8) & 0xFF)] ^
-			      crc_slice8_table[0x600L + ((one >> 16) & 0xFF)] ^
-			      crc_slice8_table[0x700L + ((one >> 24) & 0xFF)];
-#else
-			uint32_t one = *current++ ^ crc;
-			uint32_t two = *current++;
-			crc = crc_slice8_table[(two >> 24) & 0xFF] ^
-			      crc_slice8_table[0x100L + ((two >> 16) & 0xFF)] ^
-			      crc_slice8_table[0x200L + ((two >> 8) & 0xFF)] ^
-			      crc_slice8_table[0x300L + (two & 0xFF)] ^
-			      crc_slice8_table[0x400L + ((one >> 24) & 0xFF)] ^
-			      crc_slice8_table[0x500L + ((one >> 16) & 0xFF)] ^
-			      crc_slice8_table[0x600L + ((one >> 8) & 0xFF)] ^
-			      crc_slice8_table[0x700L + (one & 0xFF)];
-#endif
-		}
-	}
-	uint8_t* current8 = (uint8_t*)current;
-	for(size_t i=0; i < (length & (sizeof(uint32_t)*2 * UNROLL_CYCLES -1)); i++) {
-		crc = (crc >> 8) ^ crc_slice8_table[(crc & 0xFF) ^ current8[i]];
-	}
-	return ~crc;
+static inline uint32_t bswap32(uint32_t x) {
+	return (x >> 24) | ((x >> 8) & 0x0000FF00) | ((x << 8) & 0x00FF0000) | (x << 24);
 }
-static void generate_crc32_slice8_table() {
-	crc_slice8_table = (uint32_t*)malloc(8*256*sizeof(uint32_t));
-	for(int byte=0; byte<8; byte++)
-		for(int v=0; v<256; v++) {
-			uint32_t crc = v;
-			for(int i = byte; i >= 0; i--) {
-				for(int j = 0; j < 8; j++) {
-					crc = (crc >> 1) ^ (-(crc & 1) & 0xEDB88320);
-				}
+# endif
+#endif
+
+#define CRC32_GENERIC_CHAINS 4 // newer processors may prefer 8
+static uint32_t do_crc32_incremental_generic(const void* data, size_t length, uint32_t init) {
+	const uint32_t* crc_base_table = crc_slice_table + 4*256; // this also seems to help MSVC's optimiser, which otherwise keeps trying to add to crc_slice_table every time it's referenced
+	uint32_t crc[CRC32_GENERIC_CHAINS]; // Clang seems to be more spill happy with an array over individual variables :(
+	crc[0] = ~init;
+	uint8_t* current8 = (uint8_t*)data;
+	
+	// align to multiple of 4
+	if(((uintptr_t)current8 & 1) && length >= 1) {
+		crc[0] = (crc[0] >> 8) ^ crc_base_table[(crc[0] & 0xFF) ^ *current8++];
+		length--;
+	}
+	if(((uintptr_t)current8 & 2) && length >= 2) {
+		crc[0] = (crc[0] >> 8) ^ crc_base_table[(crc[0] & 0xFF) ^ *current8++];
+		crc[0] = (crc[0] >> 8) ^ crc_base_table[(crc[0] & 0xFF) ^ *current8++];
+		length -= 2;
+	}
+	
+	uint8_t* end8 = current8 + length;
+	uint32_t* current = (uint32_t*)current8;
+	if(length >= 8*CRC32_GENERIC_CHAINS-4) {
+		size_t lenMain = ((length-(CRC32_GENERIC_CHAINS-1)*4) / 4);
+		uint32_t* end = current + (lenMain / CRC32_GENERIC_CHAINS) * CRC32_GENERIC_CHAINS;
+		for(int c=1; c<CRC32_GENERIC_CHAINS; c++)
+			crc[c] = 0;
+		while(current != end) {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+			#define CRC_PROC4(v, in) \
+				v ^= bswap32(in); \
+				v = crc_slice_table[v >> 24] ^ crc_slice_table[0x100L + ((v >> 16) & 0xff)] ^ crc_slice_table[0x200L + ((v >> 8) & 0xff)] ^ crc_slice_table[0x300L + (v & 0xff)]
+#else
+			#define CRC_PROC4(v, in) \
+				v ^= (in); \
+				v = crc_slice_table[v >> 24] ^ crc_slice_table[0x100L + ((v >> 16) & 0xff)] ^ crc_slice_table[0x200L + ((v >> 8) & 0xff)] ^ crc_slice_table[0x300L + (v & 0xff)]
+#endif
+			for(int c=0; c<CRC32_GENERIC_CHAINS; c++) {
+				CRC_PROC4(crc[c], *current);
+				current++;
 			}
-			crc_slice8_table[byte*256 + v] = crc;
 		}
+		// aggregate accumulators
+		current8 = (uint8_t*)current;
+		#if (CRC32_GENERIC_CHAINS & (CRC32_GENERIC_CHAINS-1)) == 0
+		// assume that lengths which are a multiple of 4/8/16/32 are common
+		if((end8 - current8) & (CRC32_GENERIC_CHAINS*4)) {
+			CRC_PROC4(crc[0], *current);
+			current8 += 4;
+			
+			for(int c=1; c<CRC32_GENERIC_CHAINS; c++) {
+				for(int i=0; i<4; i++)
+					crc[c] = (crc[c] >> 8) ^ crc_base_table[(crc[c] & 0xff) ^ *current8++];
+				crc[(c+1) & ~CRC32_GENERIC_CHAINS] ^= crc[c];
+			}
+		} else
+		#endif
+		#undef CRC_PROC4
+		for(int c=1; c<CRC32_GENERIC_CHAINS; c++) {
+			for(int i=0; i<4; i++)
+				crc[0] = (crc[0] >> 8) ^ crc_base_table[(crc[0] & 0xff) ^ *current8++];
+			crc[0] ^= crc[c];
+		}
+	}
+	
+	// tail loop
+	while(current8 != end8) {
+		crc[0] = (crc[0] >> 8) ^ crc_base_table[(crc[0] & 0xFF) ^ *current8++];
+	}
+	return ~crc[0];
+}
+static void generate_crc32_slice_table() {
+	crc_slice_table = (uint32_t*)malloc(5*256*sizeof(uint32_t));
+	// generate standard byte-by-byte table
+	uint32_t* crc_base_table = crc_slice_table + 4*256;
+	for(int v=0; v<256; v++) {
+		uint32_t crc = v;
+		for(int j = 0; j < 8; j++) {
+			crc = (crc >> 1) ^ (-(int32_t)(crc & 1) & 0xEDB88320);
+		}
+		crc_base_table[v] = crc;
+	}
+	
+	// generate slice-by-4 shifted across for X independent chains
+	for(int v=0; v<256; v++) {
+		uint32_t crc = crc_base_table[v];
+		#if CRC32_GENERIC_CHAINS > 1
+		for(int i=0; i<4*CRC32_GENERIC_CHAINS-5; i++)
+			crc = (crc >> 8) ^ crc_base_table[crc & 0xff];
+		for(int i=0; i<4; i++) {
+			crc = (crc >> 8) ^ crc_base_table[crc & 0xff];
+			crc_slice_table[i*256 + v] = crc;
+		}
+		#else
+		for(int i=0; i<4; i++) {
+			crc_slice_table[i*256 + v] = crc;
+			crc = (crc >> 8) ^ crc_base_table[crc & 0xff];
+		}
+		#endif
+	}
 }
 #endif
 
@@ -133,7 +181,7 @@ void crc_init() {
 	// instance never deleted... oh well...
 	
 #if !defined(PLATFORM_X86) || defined(__ILP32__)
-	generate_crc32_slice8_table();
+	generate_crc32_slice_table();
 #endif
 	
 #ifdef PLATFORM_X86
