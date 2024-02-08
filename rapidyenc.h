@@ -14,7 +14,7 @@ extern "C" {
 /**
  * Version, in 0xMMmmpp format, where MM=major version, mm=minor version, pp=patch version
  */
-#define RAPIDYENC_VERSION 0x010000
+#define RAPIDYENC_VERSION 0x010001
 RAPIDYENC_API int rapidyenc_version(void); // returns RAPIDYENC_VERSION
 
 /**
