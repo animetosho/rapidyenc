@@ -178,24 +178,24 @@ YencDecoderEnd do_decode_end_scalar(const unsigned char** src, unsigned char** d
 			if(es[i] == '.' && isRaw) {
 				i++;
 				YDEC_CHECK_END(YDEC_STATE_CRLFDT)
-				// fall-through
 			} else if(es[i] == '=') {
 				i++;
 				YDEC_CHECK_END(YDEC_STATE_CRLFEQ)
 				goto do_decode_endable_scalar_ceq;
 			} else
 				break;
+			// fall-through
 		case YDEC_STATE_CRLFDT:
 			if(isRaw && es[i] == '\r') {
 				i++;
 				YDEC_CHECK_END(YDEC_STATE_CRLFDTCR)
-				// fall-through
 			} else if(isRaw && es[i] == '=') { // check for dot-stuffed ending: \r\n.=y
 				i++;
 				YDEC_CHECK_END(YDEC_STATE_CRLFEQ)
 				goto do_decode_endable_scalar_ceq;
 			} else
 				break;
+			// fall-through
 		case YDEC_STATE_CRLFDTCR:
 			if(es[i] == '\n') {
 				if(isRaw) {
@@ -331,8 +331,8 @@ YencDecoderEnd do_decode_scalar(const unsigned char** src, unsigned char** dest,
 
 
 
-template<bool isRaw, bool searchEnd, int width, void(&kernel)(const uint8_t*, long&, unsigned char*&, unsigned char&, uint16_t&)>
-YencDecoderEnd do_decode_simd(const unsigned char** src, unsigned char** dest, size_t len, YencDecoderState* state) {
+template<bool isRaw, bool searchEnd, void(&kernel)(const uint8_t*, long&, unsigned char*&, unsigned char&, uint16_t&)>
+inline YencDecoderEnd _do_decode_simd(size_t width, const unsigned char** src, unsigned char** dest, size_t len, YencDecoderState* state) {
 	if(len <= width*2) return do_decode_scalar<isRaw, searchEnd>(src, dest, len, state);
 	
 	YencDecoderState tState = YDEC_STATE_CRLF;
@@ -461,54 +461,37 @@ YencDecoderEnd do_decode_simd(const unsigned char** src, unsigned char** dest, s
 	return YDEC_END_NONE;
 }
 
-static inline void decoder_init_lut(uint8_t* eqFixLUT, void* compactLUT) {
-	for(int i=0; i<256; i++) {
-		int k = i;
-		int p = 0;
-		
-		// fix LUT
-		k = i;
-		p = 0;
-		for(int j=0; j<8; j++) {
-			k = i >> j;
-			if(k & 1) {
-				p |= 1 << j;
-				j++;
-			}
-		}
-		eqFixLUT[i] = p;
-		
-		#ifdef YENC_DEC_USE_THINTABLE
-		uint8_t* res = (uint8_t*)compactLUT + i*8;
-		k = i;
-		p = 0;
-		for(int j=0; j<8; j++) {
-			if(!(k & 1)) {
-				res[p++] = j;
-			}
-			k >>= 1;
-		}
-		for(; p<8; p++)
-			res[p] = 0x80;
-		#endif
-	}
-	#ifndef YENC_DEC_USE_THINTABLE
-	for(int i=0; i<32768; i++) {
-		int k = i;
-		uint8_t* res = (uint8_t*)compactLUT + i*16;
-		int p = 0;
-		
-		for(int j=0; j<16; j++) {
-			if(!(k & 1)) {
-				res[p++] = j;
-			}
-			k >>= 1;
-		}
-		for(; p<16; p++)
-			res[p] = 0x80;
-	}
-	#endif
+template<bool isRaw, bool searchEnd, size_t width, void(&kernel)(const uint8_t*, long&, unsigned char*&, unsigned char&, uint16_t&)>
+YencDecoderEnd do_decode_simd(const unsigned char** src, unsigned char** dest, size_t len, YencDecoderState* state) {
+	return _do_decode_simd<isRaw, searchEnd, kernel>(width, src, dest, len, state);
 }
+template<bool isRaw, bool searchEnd, size_t(&getWidth)(), void(&kernel)(const uint8_t*, long&, unsigned char*&, unsigned char&, uint16_t&)>
+YencDecoderEnd do_decode_simd(const unsigned char** src, unsigned char** dest, size_t len, YencDecoderState* state) {
+	return _do_decode_simd<isRaw, searchEnd, kernel>(getWidth(), src, dest, len, state);
+}
+
+
+static inline void decoder_init_lut(void* compactLUT) {
+	#ifdef YENC_DEC_USE_THINTABLE
+	const int tableSize = 8;
+	#else
+	const int tableSize = 16;
+	#endif
+	for(int i=0; i<(tableSize==8?256:32768); i++) {
+		int k = i;
+		uint8_t* res = (uint8_t*)compactLUT + i*tableSize;
+		int p = 0;
+		for(int j=0; j<tableSize; j++) {
+			if(!(k & 1)) {
+				res[p++] = j;
+			}
+			k >>= 1;
+		}
+		for(; p<tableSize; p++)
+			res[p] = 0x80;
+	}
+}
+
 template<bool isRaw>
 static inline void decoder_set_nextMask(const uint8_t* src, size_t len, uint16_t& nextMask) {
 	if(isRaw) {
@@ -534,4 +517,21 @@ static inline uint16_t decoder_set_nextMask(const uint8_t* src, unsigned mask) {
 			return mask & 2;
 	}
 	return 0;
+}
+
+// resolve invalid sequences of = to deal with cases like '===='
+// bit hack inspired from simdjson: https://youtu.be/wlvKAT7SZIQ?t=33m38s
+template<typename T>
+static inline T fix_eqMask(T mask) {
+	// isolate the start of each consecutive bit group (e.g. 01011101 -> 01000101)
+	T start = mask & ~(mask << 1);
+	
+	const T odd = (T)0xaaaaaaaaaaaaaaaa; // every odd bit (10101010...)
+	
+	// obtain groups which start on an even bit (clear groups that start on an odd bit, but this leaves an unwanted trailing bit)
+	T evenGroups = mask + (start & odd);
+	
+	// clear odd bits in even groups, whilst conversely preserving odd bits in odd groups
+	// the `& mask` also conveniently gets rid of unwanted trailing bits
+	return (evenGroups ^ odd) & mask;
 }

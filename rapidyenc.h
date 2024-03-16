@@ -30,11 +30,15 @@ RAPIDYENC_API int rapidyenc_version(void); // returns RAPIDYENC_VERSION
 #define RYKERN_VBMI2 0x603
 // ARM specific encode/decode kernels
 #define RYKERN_NEON 0x1000
+// RISC-V specific encode/decode kernels
+#define RYKERN_RVV 0x10000
 // x86 specific CRC32 kernels
 #define RYKERN_PCLMUL 0x340
 #define RYKERN_VPCLMUL 0x440
 // ARM specific CRC32 kernels
 #define RYKERN_ARMCRC 8
+// RISC-V specific CRC32 kernels
+#define RYKERN_ZBC 16
 
 
 /***** ENCODE *****/

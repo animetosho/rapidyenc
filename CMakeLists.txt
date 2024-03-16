@@ -91,11 +91,13 @@ set(RAPIDYENC_SOURCES
 	${SRC_DIR}/encoder_vbmi2.cc
 	${SRC_DIR}/decoder_vbmi2.cc
 	${SRC_DIR}/encoder_neon.cc
-	${SRC_DIR}/encoder_rvv.cc
 	${SRC_DIR}/${DECODER_NEON_FILE}
+	${SRC_DIR}/encoder_rvv.cc
+	${SRC_DIR}/decoder_rvv.cc
 	${SRC_DIR}/crc_folding.cc
 	${SRC_DIR}/crc_folding_256.cc
 	${SRC_DIR}/crc_arm.cc
+	${SRC_DIR}/crc_riscv.cc
 )
 set(CRCUTIL_SOURCES 
 	${CRCUTIL_DIR}/code/crc32c_sse4.cc 
@@ -189,12 +191,22 @@ if(NOT MSVC OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 		CHECK_CXX_COMPILER_FLAG("-march=rv64gcv" COMPILER_SUPPORTS_RVV)
 		if(COMPILER_SUPPORTS_RVV)
 			set_source_files_properties(${SRC_DIR}/encoder_rvv.cc PROPERTIES COMPILE_OPTIONS -march=rv64gcv)
+			set_source_files_properties(${SRC_DIR}/decoder_rvv.cc PROPERTIES COMPILE_OPTIONS -march=rv64gcv)
+		endif()
+		CHECK_CXX_COMPILER_FLAG("-march=rv64gc_zbkc" COMPILER_SUPPORTS_ZBKC)
+		if(COMPILER_SUPPORTS_ZBKC)
+			set_source_files_properties(${SRC_DIR}/crc_riscv.cc PROPERTIES COMPILE_OPTIONS -march=rv64gc_zbkc)
 		endif()
 	endif()
 	if(IS_RISCV32)
 		CHECK_CXX_COMPILER_FLAG("-march=rv32gcv" COMPILER_SUPPORTS_RVV)
 		if(COMPILER_SUPPORTS_RVV)
 			set_source_files_properties(${SRC_DIR}/encoder_rvv.cc PROPERTIES COMPILE_OPTIONS -march=rv32gcv)
+			set_source_files_properties(${SRC_DIR}/decoder_rvv.cc PROPERTIES COMPILE_OPTIONS -march=rv32gcv)
+		endif()
+		CHECK_CXX_COMPILER_FLAG("-march=rv32gc_zbkc" COMPILER_SUPPORTS_ZBKC)
+		if(COMPILER_SUPPORTS_ZBKC)
+			set_source_files_properties(${SRC_DIR}/crc_riscv.cc PROPERTIES COMPILE_OPTIONS -march=rv32gc_zbkc)
 		endif()
 	endif()
 endif()

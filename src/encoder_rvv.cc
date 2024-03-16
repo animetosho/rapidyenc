@@ -4,13 +4,6 @@
 #include "encoder.h"
 #include "encoder_common.h"
 
-# include <riscv_vector.h>
-# if defined(__clang__) && __clang_major__ < 16
-#  define RV(f) f
-# else
-#  define RV(f) __riscv_##f
-# endif
-
 
 static HEDLEY_ALWAYS_INLINE void encode_eol_handle_pre(const uint8_t* HEDLEY_RESTRICT _src, long& inpos, uint8_t*& outp, long& col, long lineSizeOffset) {
 	// TODO: vectorize
@@ -112,7 +105,7 @@ HEDLEY_ALWAYS_INLINE void do_encode_rvv(int line_size, int* colOffset, const uin
 			vl2
 		);
 		
-#if defined(__riscv_v_intrinsic) && __riscv_v_intrinsic >= 13000
+#ifdef __riscv_v_intrinsic
 		data = RV(vor_vx_u8m2_mu)(cmp, tmpData, tmpData, 64, vl2);
 #else
 		data = RV(vor_vx_u8m2_m)(cmp, tmpData, tmpData, 64, vl2);
@@ -122,11 +115,7 @@ HEDLEY_ALWAYS_INLINE void do_encode_rvv(int line_size, int* colOffset, const uin
 		size_t count = RV(vcpop_m_b4)(cmp, vl2);
 		if(count > 1) {
 			// widen mask: 4b->8b
-#if defined(__riscv_v_intrinsic) && __riscv_v_intrinsic >= 13000
-			vuint8mf4_t vcmp = RV(vlmul_trunc_v_u8m1_u8mf4)(RV(vreinterpret_v_b4_u8m1)(cmp));
-#else
-			vuint8mf4_t vcmp = *(vuint8mf4_t*)(&cmp);
-#endif
+			vuint8mf4_t vcmp = RV_VEC_U8MF4_CAST(cmp);
 			// TODO: use vwsll instead if available
 			//    -  is clmul useful here?
 			vuint8mf2_t xcmp = RV(vreinterpret_v_u16mf2_u8mf2)(RV(vwmulu_vx_u16mf2)(vcmp, 16, vl2));
@@ -134,11 +123,7 @@ HEDLEY_ALWAYS_INLINE void do_encode_rvv(int line_size, int* colOffset, const uin
 			
 			// expand mask by inserting '1' between each bit (0000abcd -> 1a1b1c1d)
 			vuint8m1_t xcmpTmp = RV(vrgather_vv_u8m1)(MASK_EXPAND, RV(vlmul_ext_v_u8mf2_u8m1)(xcmp), vl2);
-#if defined(__riscv_v_intrinsic) && __riscv_v_intrinsic >= 13000
-			vbool2_t cmpmask = RV(vreinterpret_b2)(xcmpTmp);
-#else
-			vbool2_t cmpmask = *(vbool2_t*)(&xcmpTmp);
-#endif
+			vbool2_t cmpmask = RV_MASK_CAST(2, 8, xcmpTmp);
 			
 			// expand data and insert =
 			// TODO: use vwsll instead if available
@@ -149,7 +134,7 @@ HEDLEY_ALWAYS_INLINE void do_encode_rvv(int line_size, int* colOffset, const uin
 			// prune unneeded =
 			vuint8m4_t dataTmp = RV(vreinterpret_v_u16m4_u8m4)(data2);
 			vuint8m4_t final_data = RV(vcompress_vm_u8m4)(
-#if defined(__riscv_v_intrinsic) && __riscv_v_intrinsic >= 13000
+#ifdef __riscv_v_intrinsic
 				dataTmp, cmpmask, vl2*2
 #else
 				cmpmask, dataTmp, dataTmp, vl2*2
