@@ -5,12 +5,12 @@ Note that it only handles the underlying encoding/decoding routines - yEnc heade
 Features
 ---------
 
--   implementation uses x86/ARM SIMD capabilities, with support for ARMv7 NEON, ARMv8 ASIMD or the following x86 SIMD extensions: SSE2, SSSE3, AVX, AVX2, AVX512-BW (128/256-bit), AVX512-VBMI2
+-   implementation uses x86/ARM/RISC-V SIMD capabilities, with support for ARMv7 NEON, ARMv8 ASIMD or the following x86 SIMD extensions: SSE2, SSSE3, AVX, AVX2, AVX512-BW (128/256-bit), AVX512-VBMI2 (or AVX10.1/256)
 -   CPU detection and dynamic dispatch (i.e. select best implementation for currently running CPU)
 -   incremental processing, including detection of yEnc/NNTP end sequences in decoder
 -   raw yEnc encoding with the ability to specify line length. A single thread can achieve \>450MB/s on a Raspberry Pi 3, or \>5GB/s on a Core-i series CPU.
 -   yEnc decoding, with and without NNTP layer dot unstuffing. A single thread can achieve \>300MB/s on a Raspberry Pi 3, or \>4.5GB/s on a Core-i series CPU.
--   CRC32 implementation via [crcutil](https://code.google.com/p/crcutil/) or [PCLMULQDQ instruction](http://www.intel.com/content/dam/www/public/us/en/documents/white-papers/fast-crc-computation-generic-polynomials-pclmulqdq-paper.pdf), or ARMv8’s CRC instructions (\>1GB/s on a low power Atom/ARM CPU, \>15GB/s on a modern Intel CPU)
+-   CRC32 implementation via [crcutil](https://code.google.com/p/crcutil/) or [PCLMULQDQ instruction](http://www.intel.com/content/dam/www/public/us/en/documents/white-papers/fast-crc-computation-generic-polynomials-pclmulqdq-paper.pdf), ARMv8’s CRC instructions, or RISC-V’s Zb(k)c extension (\>1GB/s on a low power Atom/ARM CPU, \>15GB/s on a modern Intel CPU)
 -   ability to combine two CRC32 hashes into one (useful for amalgamating *pcrc32s* into a *crc32* for yEnc), as well as quickly compute the CRC32 of a sequence of null bytes
 
 Building
