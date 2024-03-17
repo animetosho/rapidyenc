@@ -3,6 +3,7 @@ project(rapidyenc)
 
 option(BUILD_NATIVE "Optimise for and target only the build host's CPU; this build may not be re-distributable" OFF)
 option(DISABLE_AVX256 "Disable the use of 256-bit AVX instructions on x86 processors" OFF)
+option(DISABLE_CRCUTIL "Disable usage of crcutil library" OFF)
 
 include(CheckCXXCompilerFlag)
 include(CheckIncludeFileCXX)
@@ -48,6 +49,9 @@ endif()
 
 if(DISABLE_AVX256)
 	add_compile_definitions(YENC_DISABLE_AVX256=1)
+endif()
+if(DISABLE_CRCUTIL)
+	add_compile_definitions(YENC_DISABLE_CRCUTIL=1)
 endif()
 
 if(NOT MSVC)
@@ -109,8 +113,10 @@ set(CRCUTIL_SOURCES
 	${CRCUTIL_DIR}/examples/interface.cc
 )
 
-include_directories(${CRCUTIL_DIR}/code ${CRCUTIL_DIR}/examples ${CRCUTIL_DIR}/tests)
-add_compile_definitions(CRCUTIL_USE_MM_CRC32=0)
+if(NOT DISABLE_CRCUTIL)
+	include_directories(${CRCUTIL_DIR}/code ${CRCUTIL_DIR}/examples ${CRCUTIL_DIR}/tests)
+	add_compile_definitions(CRCUTIL_USE_MM_CRC32=0)
+endif()
 
 if(MSVC)
 	set(RELEASE_COMPILE_FLAGS /GS- /Gy /sdl- /Oy /Oi)
@@ -132,7 +138,12 @@ else()
 	endif()
 endif()
 
-add_library(rapidyenc OBJECT ${RAPIDYENC_SOURCES} ${CRCUTIL_SOURCES})
+if(DISABLE_CRCUTIL)
+	add_library(rapidyenc OBJECT ${RAPIDYENC_SOURCES})
+else()
+	add_library(rapidyenc OBJECT ${RAPIDYENC_SOURCES} ${CRCUTIL_SOURCES})
+endif()
+
 set_property(TARGET rapidyenc PROPERTY POSITION_INDEPENDENT_CODE 1)  # needed for shared build
 
 if(MSVC)

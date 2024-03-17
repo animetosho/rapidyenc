@@ -33,6 +33,7 @@ The following options can be passed into CMake:
 
 * **BUILD_NATIVE**: Optimise for and target only the build host’s CPU; this build may not be re-distributable
 * **DISABLE_AVX256**: Disable the use of 256-bit AVX instructions on x86 processors
+* **DISABLE_CRCUTIL**: Disable crcutil usage. crcutil is only ever enabled for x86 builds
 
 API
 ===

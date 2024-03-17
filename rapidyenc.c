@@ -92,10 +92,10 @@ uint32_t rapidyenc_crc(const void* src, size_t src_length, uint32_t init_crc) {
 	return do_crc32(src, src_length, init_crc);
 }
 uint32_t rapidyenc_crc_combine(uint32_t crc1, const uint32_t crc2, size_t length2) {
-	return do_crc32_combine(crc1, crc2, length2);
+	return crc32_combine(crc1, crc2, length2);
 }
 uint32_t rapidyenc_crc_zeros(uint32_t init_crc, size_t length) {
-	return do_crc32_zeros(init_crc, length);
+	return crc32_zeros(init_crc, length);
 }
 
 int rapidyenc_crc_kernel() {
