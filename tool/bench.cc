@@ -18,6 +18,7 @@ static const char* kernel_to_str(int k) {
 	return "unknown";
 }
 #define ARTICLE_SIZE 768000ULL
+#define SINGLE_OP_NUM 100
 #define REPETITIONS 1000
 
 int main(int, char**) {
@@ -68,6 +69,23 @@ int main(int, char**) {
 	speed = decoded_length * REPETITIONS;
 	speed = speed / us / 1.048576;
 	std::cerr << "CRC32 (" << kernel_to_str(kernel) << "): " << speed << " MB/s" << std::endl;
+	
+	// CRC 256pow
+	std::vector<uint64_t> rnd_n(SINGLE_OP_NUM);
+	std::vector<uint32_t> rnd_out(SINGLE_OP_NUM);
+	for(auto& c : rnd_n)
+		c = ((rand() & 0xffff) << 20) | (rand() & 0xfffff);  // 36-bit random numbers
+	
+	start = std::chrono::high_resolution_clock::now();
+	for(int i=0; i<REPETITIONS; i++) {
+		for(unsigned j=0; j<SINGLE_OP_NUM; j++)
+			rnd_out[j] = rapidyenc_crc_256pow(rnd_n[j]);
+	}
+	stop = std::chrono::high_resolution_clock::now();
+	us = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
+	speed = SINGLE_OP_NUM * REPETITIONS;
+	speed = speed / us;
+	std::cerr << "CRC32 256^n: " << speed << " Mop/s" << std::endl;
 	
 	return 0;
 }

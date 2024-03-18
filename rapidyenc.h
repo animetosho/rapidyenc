@@ -173,12 +173,34 @@ RAPIDYENC_API uint32_t rapidyenc_crc(const void* src, size_t src_length, uint32_
  * Given `crc1 = CRC32(data1)` and `crc2 = CRC32(data2)`, returns CRC32(data1 + data2)
  * `length2` refers to the length of 'data2'
  */
-RAPIDYENC_API uint32_t rapidyenc_crc_combine(uint32_t crc1, const uint32_t crc2, size_t length2);
+RAPIDYENC_API uint32_t rapidyenc_crc_combine(uint32_t crc1, const uint32_t crc2, uint64_t length2);
 
 /**
  * Returns `rapidyenc_crc(src, length, init_crc)` where 'src' is all zeroes
  */
-RAPIDYENC_API uint32_t rapidyenc_crc_zeros(uint32_t init_crc, size_t length);
+RAPIDYENC_API uint32_t rapidyenc_crc_zeros(uint32_t init_crc, uint64_t length);
+
+/**
+ * Performs the inverse of `rapidyenc_crc_zeros`:
+ * Given `init_crc = CRC32(data + [0]*length)`, returns `CRC32(data)`
+ */
+RAPIDYENC_API uint32_t rapidyenc_crc_unzero(uint32_t init_crc, uint64_t length);
+
+/**
+ * Returns the product of `a` and `b` in the CRC32 field
+ */
+RAPIDYENC_API uint32_t rapidyenc_crc_multiply(uint32_t a, uint32_t b);
+
+/**
+ * Returns 2**n in the CRC32 field. n can be negative
+ */
+RAPIDYENC_API uint32_t rapidyenc_crc_2pow(int64_t n);
+
+/**
+ * Returns 2**(8n) in the CRC32 field
+ * Similar to `rapidyenc_crc_2pow(8*n)`, but avoids overflow and n cannot be negative
+ */
+RAPIDYENC_API uint32_t rapidyenc_crc_256pow(uint64_t n);
 
 /**
  * Returns the kernel/ISA level used for CRC32 computation
