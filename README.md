@@ -34,6 +34,9 @@ The following options can be passed into CMake:
 * **BUILD_NATIVE**: Optimise for and target only the build host’s CPU; this build may not be re-distributable
 * **DISABLE_AVX256**: Disable the use of 256-bit AVX instructions on x86 processors
 * **DISABLE_CRCUTIL**: Disable crcutil usage. crcutil is only ever enabled for x86 builds
+* **DISABLE_ENCODE**: Remove yEnc encode functionality from build. `rapidyenc_encode`* functions, except `rapidyenc_encode_max_length`, will be unavailable
+* **DISABLE_DECODE**: Remove yEnc decode functionality from build. `rapidyenc_decode`* functions will be unavailable
+* **DISABLE_CRC**: Remove CRC32 functionality from build. `rapidyenc_crc`* functions will be unavailable. Implies *DISABLE_CRCUTIL*
 
 API
 ===

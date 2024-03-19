@@ -21,6 +21,19 @@ int main(int argc, char **argv) {
 	if(argv[1][0] != 'e' && argv[1][0] != 'd')
 		return print_usage(argv[0]);
 	
+#ifdef RAPIDYENC_DISABLE_ENCODE
+	if(argv[1][0] == 'e') {
+		fprintf(stderr, "encoder has been disabled in this build\n");
+		return 1;
+	}
+#endif
+#ifdef RAPIDYENC_DISABLE_DECODE
+	if(argv[1][0] == 'd') {
+		fprintf(stderr, "decoder has been disabled in this build\n");
+		return 1;
+	}
+#endif
+	
 	FILE* infile = stdin; // fopen("", "rb");
 	if(!infile) {
 		fprintf(stderr, "error opening input: %s\n", strerror(errno));
@@ -41,10 +54,13 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 	
+#ifndef RAPIDYENC_DISABLE_CRC
 	rapidyenc_crc_init();
 	uint32_t crc = 0;
+#endif
 	int has_error = 0;
 	
+#ifndef RAPIDYENC_DISABLE_ENCODE
 	if(argv[1][0] == 'e') {
 		void* output = malloc(rapidyenc_encode_max_length(BUFFER_SIZE, LINE_SIZE));
 		if(!output) {
@@ -70,7 +86,9 @@ int main(int argc, char **argv) {
 				break;
 			}
 			size_t out_len = rapidyenc_encode_ex(LINE_SIZE, &column, data, output, read, eof);
+#ifndef RAPIDYENC_DISABLE_CRC
 			crc = rapidyenc_crc(data, read, crc);
+#endif
 			if(fwrite(output, 1, out_len, outfile) != out_len) {
 				fprintf(stderr, "error writing output\n");
 				has_error = 1;
@@ -79,7 +97,10 @@ int main(int argc, char **argv) {
 			if(eof) break;
 		}
 		free(output);
-	} else {
+	}
+#endif
+#ifndef RAPIDYENC_DISABLE_DECODE
+	if(argv[1][0] == 'd') {
 		rapidyenc_decode_init();
 		
 		RapidYencDecoderState state = RYDEC_STATE_CRLF;
@@ -100,7 +121,9 @@ int main(int argc, char **argv) {
 			}
 			ended = rapidyenc_decode_incremental((const void**)&in_ptr, &out_ptr, read, &state);
 			size_t out_len = (uintptr_t)out_ptr - (uintptr_t)data;
+#ifndef RAPIDYENC_DISABLE_CRC
 			crc = rapidyenc_crc(data, out_len, crc);
+#endif
 			if(fwrite(data, 1, out_len, outfile) != out_len) {
 				fprintf(stderr, "error writing output\n");
 				has_error = 1;
@@ -118,13 +141,16 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
+#endif
 	
 	fclose(infile);
 	fclose(outfile);
 	free(data);
 	
 	if(!has_error) {
+#ifndef RAPIDYENC_DISABLE_CRC
 		fprintf(stderr, "Computed CRC32: %08x\n", crc);
+#endif
 	}
 	
 	return 0;

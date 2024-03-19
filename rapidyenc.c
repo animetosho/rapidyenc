@@ -12,28 +12,14 @@ int rapidyenc_version(void) {
 	return RAPIDYENC_VERSION;
 }
 
-/*** ENCODER ***/
+#ifndef RAPIDYENC_DISABLE_ENCODE
+
 #include "src/encoder.h"
 void rapidyenc_encode_init(void) {
 	static int done = 0;
 	if(done) return;
 	done = 1;
 	encoder_init();
-}
-
-size_t rapidyenc_encode_max_length(size_t length, int line_size) {
-	size_t ret = length * 2    /* all characters escaped */
-		+ 2 /* allocation for offset and that a newline may occur early */
-#if !defined(YENC_DISABLE_AVX256)
-		+ 64 /* allocation for YMM overflowing */
-#else
-		+ 32 /* allocation for XMM overflowing */
-#endif
-	;
-	/* add newlines, considering the possibility of all chars escaped */
-	if(line_size == 128) // optimize common case
-		return ret + 2 * (length >> 6);
-	return ret + 2 * ((length*2) / line_size);
 }
 
 size_t rapidyenc_encode(const void* __restrict src, void* __restrict dest, size_t src_length) {
@@ -50,7 +36,26 @@ int rapidyenc_encode_kernel() {
 	return encode_isa_level();
 }
 
-/*** DECODER ***/
+#endif // !defined(RAPIDYENC_DISABLE_ENCODE)
+
+size_t rapidyenc_encode_max_length(size_t length, int line_size) {
+	size_t ret = length * 2    /* all characters escaped */
+		+ 2 /* allocation for offset and that a newline may occur early */
+#if !defined(YENC_DISABLE_AVX256)
+		+ 64 /* allocation for YMM overflowing */
+#else
+		+ 32 /* allocation for XMM overflowing */
+#endif
+	;
+	/* add newlines, considering the possibility of all chars escaped */
+	if(line_size == 128) // optimize common case
+		return ret + 2 * (length >> 6);
+	return ret + 2 * ((length*2) / line_size);
+}
+
+
+#ifndef RAPIDYENC_DISABLE_DECODE
+
 #include "src/decoder.h"
 void rapidyenc_decode_init(void) {
 	static int done = 0;
@@ -79,7 +84,10 @@ int rapidyenc_decode_kernel() {
 	return decode_isa_level();
 }
 
-/*** CRC32 ***/
+#endif // !defined(RAPIDYENC_DISABLE_DECODE)
+
+#ifndef RAPIDYENC_DISABLE_CRC
+
 #include "src/crc.h"
 void rapidyenc_crc_init(void) {
 	static int done = 0;
@@ -113,4 +121,6 @@ uint32_t rapidyenc_crc_256pow(uint64_t n) {
 int rapidyenc_crc_kernel() {
 	return crc32_isa_level();
 }
+
+#endif // !defined(RAPIDYENC_DISABLE_CRC)
 

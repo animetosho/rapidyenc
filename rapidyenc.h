@@ -42,6 +42,7 @@ RAPIDYENC_API int rapidyenc_version(void); // returns RAPIDYENC_VERSION
 
 
 /***** ENCODE *****/
+#ifndef RAPIDYENC_DISABLE_ENCODE
 /**
  * Initialise global state of the encoder (sets up lookup tables and performs CPU detection).
  * As it alters global state, this function only needs to be called once, and is not thread-safe (subsequent calls to this will do nothing).
@@ -73,20 +74,24 @@ RAPIDYENC_API size_t rapidyenc_encode(const void* __restrict src, void* __restri
 RAPIDYENC_API size_t rapidyenc_encode_ex(int line_size, int* column, const void* __restrict src, void* __restrict dest, size_t src_length, int is_end);
 
 /**
+ * Returns the kernel/ISA level used for encoding
+ * Values correspond with RYKERN_* definitions above
+ */
+RAPIDYENC_API int rapidyenc_encode_kernel();
+
+#endif // !defined(RAPIDYENC_DISABLE_ENCODE)
+
+/**
  * Returns the maximum possible length of yEnc encoded output, given an input of `length` bytes
  * This function does also include additional padding needed by rapidyenc's implementation.
  * Note that this function doesn't require `rapidyenc_encode_init` to be called beforehand
  */
 RAPIDYENC_API size_t rapidyenc_encode_max_length(size_t length, int line_size);
 
-/**
- * Returns the kernel/ISA level used for encoding
- * Values correspond with RYKERN_* definitions above
- */
-RAPIDYENC_API int rapidyenc_encode_kernel();
 
 
 /***** DECODE *****/
+#ifndef RAPIDYENC_DISABLE_DECODE
 /**
  * Current decoder state, for incremental decoding
  * The values here refer to the previously seen characters in the stream, which influence how some sequences need to be handled
@@ -154,8 +159,11 @@ RAPIDYENC_API RapidYencDecoderEnd rapidyenc_decode_incremental(const void** src,
  */
 RAPIDYENC_API int rapidyenc_decode_kernel();
 
+#endif // !defined(RAPIDYENC_DISABLE_DECODE)
+
 
 /***** CRC32 *****/
+#ifndef RAPIDYENC_DISABLE_CRC
 /**
  * Initialise global state for CRC32 computation (performs CPU detection).
  * As it alters global state, this function only needs to be called once, and is not thread-safe (subsequent calls to this will do nothing).
@@ -207,6 +215,8 @@ RAPIDYENC_API uint32_t rapidyenc_crc_256pow(uint64_t n);
  * Values correspond with RYKERN_* definitions above
  */
 RAPIDYENC_API int rapidyenc_crc_kernel();
+
+#endif // !defined(RAPIDYENC_DISABLE_CRC)
 
 #ifdef __cplusplus
 }

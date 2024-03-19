@@ -4,6 +4,9 @@ project(rapidyenc)
 option(BUILD_NATIVE "Optimise for and target only the build host's CPU; this build may not be re-distributable" OFF)
 option(DISABLE_AVX256 "Disable the use of 256-bit AVX instructions on x86 processors" OFF)
 option(DISABLE_CRCUTIL "Disable usage of crcutil library" OFF)
+option(DISABLE_ENCODE "Exclude yEnc encoder from build" OFF)
+option(DISABLE_DECODE "Exclude yEnc decoder from build" OFF)
+option(DISABLE_CRC "Exclude CRC32 functions from build" OFF)
 
 include(CheckCXXCompilerFlag)
 include(CheckIncludeFileCXX)
@@ -50,7 +53,16 @@ endif()
 if(DISABLE_AVX256)
 	add_compile_definitions(YENC_DISABLE_AVX256=1)
 endif()
-if(DISABLE_CRCUTIL)
+if(DISABLE_ENCODE)
+	add_compile_definitions(RAPIDYENC_DISABLE_ENCODE=1)
+endif()
+if(DISABLE_DECODE)
+	add_compile_definitions(RAPIDYENC_DISABLE_DECODE=1)
+endif()
+if(DISABLE_CRC)
+	add_compile_definitions(RAPIDYENC_DISABLE_CRC=1)
+endif()
+if(DISABLE_CRCUTIL OR DISABLE_CRC)
 	add_compile_definitions(YENC_DISABLE_CRCUTIL=1)
 endif()
 
@@ -77,46 +89,59 @@ else()
 endif()
 
 set(SRC_DIR ./src)
-set(CRCUTIL_DIR ./crcutil-1.0)
 set(RAPIDYENC_SOURCES
 	${SRC_DIR}/platform.cc
-	${SRC_DIR}/encoder.cc
-	${SRC_DIR}/decoder.cc
-	${SRC_DIR}/crc.cc
-	
-	${SRC_DIR}/encoder_sse2.cc
-	${SRC_DIR}/decoder_sse2.cc
-	${SRC_DIR}/encoder_ssse3.cc
-	${SRC_DIR}/decoder_ssse3.cc
-	${SRC_DIR}/encoder_avx.cc
-	${SRC_DIR}/decoder_avx.cc
-	${SRC_DIR}/encoder_avx2.cc
-	${SRC_DIR}/decoder_avx2.cc
-	${SRC_DIR}/encoder_vbmi2.cc
-	${SRC_DIR}/decoder_vbmi2.cc
-	${SRC_DIR}/encoder_neon.cc
-	${SRC_DIR}/${DECODER_NEON_FILE}
-	${SRC_DIR}/encoder_rvv.cc
-	${SRC_DIR}/decoder_rvv.cc
-	${SRC_DIR}/crc_folding.cc
-	${SRC_DIR}/crc_folding_256.cc
-	${SRC_DIR}/crc_arm.cc
-	${SRC_DIR}/crc_riscv.cc
 )
-set(CRCUTIL_SOURCES 
-	${CRCUTIL_DIR}/code/crc32c_sse4.cc 
-	${CRCUTIL_DIR}/code/multiword_64_64_cl_i386_mmx.cc 
-	${CRCUTIL_DIR}/code/multiword_64_64_gcc_amd64_asm.cc 
-	${CRCUTIL_DIR}/code/multiword_64_64_gcc_i386_mmx.cc 
-	${CRCUTIL_DIR}/code/multiword_64_64_intrinsic_i386_mmx.cc 
-	${CRCUTIL_DIR}/code/multiword_128_64_gcc_amd64_sse2.cc 
-	${CRCUTIL_DIR}/examples/interface.cc
-)
-
-if(NOT DISABLE_CRCUTIL)
-	include_directories(${CRCUTIL_DIR}/code ${CRCUTIL_DIR}/examples ${CRCUTIL_DIR}/tests)
-	add_compile_definitions(CRCUTIL_USE_MM_CRC32=0)
+if(NOT DISABLE_ENCODE)
+	set(RAPIDYENC_SOURCES ${RAPIDYENC_SOURCES}
+		${SRC_DIR}/encoder.cc
+		${SRC_DIR}/encoder_sse2.cc
+		${SRC_DIR}/encoder_ssse3.cc
+		${SRC_DIR}/encoder_avx.cc
+		${SRC_DIR}/encoder_avx2.cc
+		${SRC_DIR}/encoder_vbmi2.cc
+		${SRC_DIR}/encoder_neon.cc
+		${SRC_DIR}/encoder_rvv.cc
+	)
 endif()
+if(NOT DISABLE_DECODE)
+	set(RAPIDYENC_SOURCES ${RAPIDYENC_SOURCES}
+		${SRC_DIR}/decoder.cc
+		${SRC_DIR}/decoder_sse2.cc
+		${SRC_DIR}/decoder_ssse3.cc
+		${SRC_DIR}/decoder_avx.cc
+		${SRC_DIR}/decoder_avx2.cc
+		${SRC_DIR}/decoder_vbmi2.cc
+		${SRC_DIR}/${DECODER_NEON_FILE}
+		${SRC_DIR}/decoder_rvv.cc
+	)
+endif()
+if(NOT DISABLE_CRC)
+	set(RAPIDYENC_SOURCES ${RAPIDYENC_SOURCES}
+		${SRC_DIR}/crc.cc
+		${SRC_DIR}/crc_folding.cc
+		${SRC_DIR}/crc_folding_256.cc
+		${SRC_DIR}/crc_arm.cc
+		${SRC_DIR}/crc_riscv.cc
+	)
+	
+	if(NOT DISABLE_CRCUTIL)
+		set(CRCUTIL_DIR ./crcutil-1.0)
+		set(RAPIDYENC_SOURCES ${RAPIDYENC_SOURCES}
+			${CRCUTIL_DIR}/code/crc32c_sse4.cc 
+			${CRCUTIL_DIR}/code/multiword_64_64_cl_i386_mmx.cc 
+			${CRCUTIL_DIR}/code/multiword_64_64_gcc_amd64_asm.cc 
+			${CRCUTIL_DIR}/code/multiword_64_64_gcc_i386_mmx.cc 
+			${CRCUTIL_DIR}/code/multiword_64_64_intrinsic_i386_mmx.cc 
+			${CRCUTIL_DIR}/code/multiword_128_64_gcc_amd64_sse2.cc 
+			${CRCUTIL_DIR}/examples/interface.cc
+		)
+		
+		include_directories(${CRCUTIL_DIR}/code ${CRCUTIL_DIR}/examples ${CRCUTIL_DIR}/tests)
+		add_compile_definitions(CRCUTIL_USE_MM_CRC32=0)
+	endif()
+endif()
+
 
 if(MSVC)
 	set(RELEASE_COMPILE_FLAGS /GS- /Gy /sdl- /Oy /Oi)
@@ -138,12 +163,7 @@ else()
 	endif()
 endif()
 
-if(DISABLE_CRCUTIL)
-	add_library(rapidyenc OBJECT ${RAPIDYENC_SOURCES})
-else()
-	add_library(rapidyenc OBJECT ${RAPIDYENC_SOURCES} ${CRCUTIL_SOURCES})
-endif()
-
+add_library(rapidyenc OBJECT ${RAPIDYENC_SOURCES})
 set_property(TARGET rapidyenc PROPERTY POSITION_INDEPENDENT_CODE 1)  # needed for shared build
 
 if(MSVC)
