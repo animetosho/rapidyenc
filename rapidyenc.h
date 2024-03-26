@@ -37,6 +37,7 @@ RAPIDYENC_API int rapidyenc_version(void); // returns RAPIDYENC_VERSION
 #define RYKERN_VPCLMUL 0x440
 // ARM specific CRC32 kernels
 #define RYKERN_ARMCRC 8
+#define RYKERN_ARMPMULL 0x48
 // RISC-V specific CRC32 kernels
 #define RYKERN_ZBC 16
 

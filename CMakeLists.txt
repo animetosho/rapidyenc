@@ -122,6 +122,7 @@ if(NOT DISABLE_CRC)
 		${SRC_DIR}/crc_folding.cc
 		${SRC_DIR}/crc_folding_256.cc
 		${SRC_DIR}/crc_arm.cc
+		${SRC_DIR}/crc_arm_pmull.cc
 		${SRC_DIR}/crc_riscv.cc
 	)
 	
@@ -212,9 +213,11 @@ if(NOT MSVC OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 			set_source_files_properties(${SRC_DIR}/encoder_neon.cc PROPERTIES COMPILE_OPTIONS -mfpu=neon)
 			set_source_files_properties(${SRC_DIR}/${DECODER_NEON_FILE} PROPERTIES COMPILE_OPTIONS -mfpu=neon)
 			set_source_files_properties(${SRC_DIR}/crc_arm.cc PROPERTIES COMPILE_OPTIONS "-march=armv8-a+crc;-mfpu=fp-armv8")
+			set_source_files_properties(${SRC_DIR}/crc_arm_pmull.cc PROPERTIES COMPILE_OPTIONS "-march=armv8-a+crypto+crc;-mfpu=neon")
 		endif()
 		if(IS_ARM64)
 			set_source_files_properties(${SRC_DIR}/crc_arm.cc PROPERTIES COMPILE_OPTIONS -march=armv8-a+crc)
+			set_source_files_properties(${SRC_DIR}/crc_arm_pmull.cc PROPERTIES COMPILE_OPTIONS -march=armv8-a+crypto+crc)
 		endif()
 	endif()
 	
