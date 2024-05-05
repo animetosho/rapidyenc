@@ -246,9 +246,9 @@ if(NOT MSVC OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 endif()
 
 
-add_library(rapidyenc_shared SHARED $<TARGET_OBJECTS:rapidyenc> ./rapidyenc.c)
+add_library(rapidyenc_shared SHARED $<TARGET_OBJECTS:rapidyenc> ./rapidyenc.cc)
 target_compile_definitions(rapidyenc_shared PUBLIC BUILD_SHARED=1)
-add_library(rapidyenc_static STATIC $<TARGET_OBJECTS:rapidyenc> ./rapidyenc.c)
+add_library(rapidyenc_static STATIC $<TARGET_OBJECTS:rapidyenc> ./rapidyenc.cc)
 # suggestion from https://stackoverflow.com/a/67027398/459150
 set_target_properties(rapidyenc_static PROPERTIES OUTPUT_NAME rapidyenc ARCHIVE_OUTPUT_DIRECTORY rapidyenc_static)
 set_target_properties(rapidyenc_shared PROPERTIES OUTPUT_NAME rapidyenc ARCHIVE_OUTPUT_DIRECTORY rapidyenc_shared)

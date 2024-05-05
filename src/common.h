@@ -125,7 +125,7 @@
 #ifdef __POPCNT__
 #include <nmmintrin.h>
 // POPCNT can never return a negative result, but GCC doesn't seem to realise this, so typecast it to hint it better
-#define popcnt32 (unsigned int)_mm_popcnt_u32 
+#define popcnt32 (unsigned int)_mm_popcnt_u32
 #endif
 
 #if defined(__AVX2__) || defined(__AVX512F__)
@@ -275,7 +275,7 @@ enum YEncDecIsaLevel {
 # if defined(__POPCNT__)
 #  if defined(__LZCNT__)
 #   define ISA_NATIVE (enum YEncDecIsaLevel)(_ISA_NATIVE | ISA_FEATURE_POPCNT | ISA_FEATURE_LZCNT)
-#  else 
+#  else
 #   define ISA_NATIVE (enum YEncDecIsaLevel)(_ISA_NATIVE | ISA_FEATURE_POPCNT)
 #  endif
 # else
@@ -319,7 +319,11 @@ bool cpu_supports_rvv();
 # include <stddef.h>
 #else
 /* Workaround for older MSVC not supporting stdint.h - just pull it from V8 */
-# include <v8.h>
+# if defined(NODE_GYP_MODULE_NAME) || defined(V8_DEPRECATION_WARNINGS)
+#  include <v8.h>
+# else
+#  include "stdint.h"
+# endif
 #endif
 
 
