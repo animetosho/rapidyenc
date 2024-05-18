@@ -15,6 +15,9 @@ static const char* kernel_to_str(int k) {
 	if(k == RYKERN_PCLMUL) return "PCLMUL";
 	if(k == RYKERN_VPCLMUL) return "VPCLMUL";
 	if(k == RYKERN_ARMCRC) return "ARM-CRC";
+	if(k == RYKERN_RVV) return "RVV";
+	if(k == RYKERN_ARMPMULL) return "ARM-CRC + PMULL";
+	if(k == RYKERN_ZBC) return "Zbkc";
 	return "unknown";
 }
 #define ARTICLE_SIZE 768000ULL
