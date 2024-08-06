@@ -19,7 +19,7 @@
 # endif
 bool RapidYenc::cpu_supports_neon() {
 # if defined(AT_HWCAP)
-#  ifdef __FreeBSD__
+#  if defined(__FreeBSD__) || defined(__OpenBSD__)
 	unsigned long supported;
 	elf_aux_info(AT_HWCAP, &supported, sizeof(supported));
 #   ifdef __aarch64__
@@ -139,11 +139,7 @@ int RapidYenc::cpu_supports_isa() {
 							if(cpuInfo2[3] & 0x80000) {
 								_cpuidX(cpuInfo2, 0x24, 0);
 								if((cpuInfo2[1] & 0xff) >= 1 && ( // minimum AVX10.1
-#ifdef YENC_DISABLE_AVX256
-									cpuInfo2[1] & 0x10000 // AVX10/128
-#else
-									cpuInfo2[1] & 0x20000 // AVX10/256
-#endif
+									cpuInfo2[1] & 0x20000 // AVX10/256 (AVX10/128 is now invalid)
 								)) {
 									if(cpuInfo2[1] & 0x40000) ret |= ISA_FEATURE_EVEX512;
 									return ret | ISA_LEVEL_VBMI2;
@@ -204,7 +200,7 @@ int RapidYenc::cpu_supports_crc_isa() {
 bool RapidYenc::cpu_supports_rvv() {
 # if defined(AT_HWCAP)
 	unsigned long ret;
-#  ifdef __FreeBSD__
+#  if defined(__FreeBSD__) || defined(__OpenBSD__)
 	elf_aux_info(AT_HWCAP, &ret, sizeof(ret));
 #  else
 	ret = getauxval(AT_HWCAP);
