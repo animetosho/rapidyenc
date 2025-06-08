@@ -32,24 +32,40 @@
 
 static int print_usage(const char *app) {
     fprintf(stderr, "Sample rapidyenc application\n");
-    fprintf(stderr, "Usage: %s (--encode|--decode) [--infile <file>] [--outfile <file>] [--crc-stdout] [-h|--help]\n", app);
+    fprintf(stderr, "Usage: %s (--encode|--decode) [--infile <file>] [--outfile <file>] [--crc-stdout] [-h|--help] [--version]\n", app);
     fprintf(stderr, "  --encode         Encode input to output (default: stdin/stdout)\n");
     fprintf(stderr, "  --decode         Decode input to output (default: stdin/stdout)\n");
     fprintf(stderr, "  --infile <file>  Input file (default: stdin)\n");
     fprintf(stderr, "  --outfile <file> Output file (default: stdout)\n");
     fprintf(stderr, "  --crc-stdout     Print CRC32 to stdout instead of stderr\n");
     fprintf(stderr, "  -h, --help       Show this help message\n");
+    fprintf(stderr, "  --version        Show version information\n");
     return EXIT_FAILURE;
 }
 
+#define RAPIDYENC_CLI_VERSION "1.0.0"
+
 #define BUFFER_SIZE 65536
 #define LINE_SIZE 128
+
+// Helper to print rapidyenc version as major.minor.patch
+static void print_rapidyenc_version_string(int version) {
+    int major = (version >> 16) & 0xFF;
+    int minor = (version >> 8) & 0xFF;
+    int patch = version & 0xFF;
+    printf("linked rapidyenc library version: %d.%d.%d\n", major, minor, patch);
+}
 
 int main(int argc, char **argv) {
     // Argument parsing
     int encode = 0, decode = 0, crc_to_stdout = 0;
     const char *infile_name = NULL, *outfile_name = NULL;
     for(int i = 1; i < argc; ++i) {
+        if(strcmp(argv[i], "--version") == 0) {
+            printf("rapidyenc CLI version %s\n", RAPIDYENC_CLI_VERSION);
+            print_rapidyenc_version_string(rapidyenc_version());
+            return 0;
+        }
         if(strcmp(argv[i], "--encode") == 0) encode = 1;
         else if(strcmp(argv[i], "--decode") == 0) decode = 1;
         else if(strcmp(argv[i], "--infile") == 0 && i+1 < argc) infile_name = argv[++i];
