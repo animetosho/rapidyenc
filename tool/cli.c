@@ -1,3 +1,28 @@
+/*
+ * rapidyenc CLI tool
+ *
+ * This file provides a simple command-line interface for encoding or decoding data
+ * using the rapidyenc library. It reads from stdin and writes to stdout, supporting both
+ * encoding and decoding modes, and optionally computes CRC32 checksums.
+ *
+ * Usage: cli {e|d}
+ *   e: encode stdin to stdout
+ *   d: decode stdin to stdout
+ *
+ * The function handles buffer allocation, error checking, and calls the appropriate
+ * rapidyenc API functions for the selected mode. It also prints CRC32 if enabled.
+ *
+ * Steps:
+ *   1. Parse command-line arguments and print usage if invalid.
+ *   2. Open input/output streams (stdin/stdout).
+ *   3. Allocate input buffer (and output buffer for encoding).
+ *   4. For encoding: loop reading, encoding, and writing output, updating CRC.
+ *   5. For decoding: loop reading, decoding, and writing output, updating CRC.
+ *   6. Print CRC32 if enabled.
+ *   7. Clean up and exit.
+ *
+ * Error handling is performed at each step, and the function returns 1 on error, 0 on success.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,31 +41,6 @@ static int print_usage(const char *app) {
 #define LINE_SIZE 128
 
 int main(int argc, char **argv) {
-    // --- rapidyenc CLI main function ---
-    // This function provides a simple command-line interface for encoding or decoding data
-    // using the rapidyenc library. It reads from stdin and writes to stdout, supporting both
-    // encoding and decoding modes, and optionally computes CRC32 checksums.
-    //
-    // Usage: cli {e|d}
-    //   e: encode stdin to stdout
-    //   d: decode stdin to stdout
-    //
-    // The function handles buffer allocation, error checking, and calls the appropriate
-    // rapidyenc API functions for the selected mode. It also prints CRC32 if enabled.
-    //
-    // Steps:
-    //   1. Parse command-line arguments and print usage if invalid.
-    //   2. Open input/output streams (stdin/stdout).
-    //   3. Allocate input buffer (and output buffer for encoding).
-    //   4. For encoding: loop reading, encoding, and writing output, updating CRC.
-    //   5. For decoding: loop reading, decoding, and writing output, updating CRC.
-    //   6. Print CRC32 if enabled.
-    //   7. Clean up and exit.
-    //
-    // Error handling is performed at each step, and the function returns 1 on error, 0 on success.
-    //
-    // --- Begin main logic ---
-
     // Check for correct usage and mode selection
     if(argc < 2)
         return print_usage(argv[0]);
