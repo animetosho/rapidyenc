@@ -32,11 +32,12 @@
 
 static int print_usage(const char *app) {
     fprintf(stderr, "Sample rapidyenc application\n");
-    fprintf(stderr, "Usage: %s (--encode|--decode) [--infile <file>] [--outfile <file>] [-h|--help]\n", app);
+    fprintf(stderr, "Usage: %s (--encode|--decode) [--infile <file>] [--outfile <file>] [--crc-stdout] [-h|--help]\n", app);
     fprintf(stderr, "  --encode         Encode input to output (default: stdin/stdout)\n");
     fprintf(stderr, "  --decode         Decode input to output (default: stdin/stdout)\n");
     fprintf(stderr, "  --infile <file>  Input file (default: stdin)\n");
     fprintf(stderr, "  --outfile <file> Output file (default: stdout)\n");
+    fprintf(stderr, "  --crc-stdout     Print CRC32 to stdout instead of stderr\n");
     fprintf(stderr, "  -h, --help       Show this help message\n");
     return EXIT_FAILURE;
 }
@@ -46,13 +47,14 @@ static int print_usage(const char *app) {
 
 int main(int argc, char **argv) {
     // Argument parsing
-    int encode = 0, decode = 0;
+    int encode = 0, decode = 0, crc_to_stdout = 0;
     const char *infile_name = NULL, *outfile_name = NULL;
     for(int i = 1; i < argc; ++i) {
         if(strcmp(argv[i], "--encode") == 0) encode = 1;
         else if(strcmp(argv[i], "--decode") == 0) decode = 1;
         else if(strcmp(argv[i], "--infile") == 0 && i+1 < argc) infile_name = argv[++i];
         else if(strcmp(argv[i], "--outfile") == 0 && i+1 < argc) outfile_name = argv[++i];
+        else if(strcmp(argv[i], "--crc-stdout") == 0) crc_to_stdout = 1;
         else if(strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) return print_usage(argv[0]);
         else if(argv[i][0] != '-') {
             // legacy positional: e|d infile outfile
@@ -218,7 +220,8 @@ int main(int argc, char **argv) {
     // Print CRC32 if enabled and no error occurred
     if(!has_error) {
 #ifndef RAPIDYENC_DISABLE_CRC
-        fprintf(stderr, "Computed CRC32: %08x\n", crc);
+        FILE* crc_out = crc_to_stdout ? stdout : stderr;
+        fprintf(crc_out, "Computed CRC32: %08x\n", crc);
 #endif
     }
 
