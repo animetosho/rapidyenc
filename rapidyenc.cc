@@ -1,20 +1,18 @@
-#ifdef BUILD_SHARED
-# ifdef _MSC_VER
-#  define RAPIDYENC_API __declspec(dllexport)
-# else
-#  define RAPIDYENC_API __attribute__((visibility("default")))
-# endif
-#endif
-
 #include "rapidyenc.h"
+#include "src/encoder.h"
+#include "src/decoder.h"
+#include "src/crc.h"
+
+// Only wrap the C API functions in extern "C"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 int rapidyenc_version(void) {
 	return RAPIDYENC_VERSION;
 }
 
 #ifndef RAPIDYENC_DISABLE_ENCODE
-
-#include "src/encoder.h"
 void rapidyenc_encode_init(void) {
 	static int done = 0;
 	if(done) return;
@@ -35,7 +33,6 @@ size_t rapidyenc_encode_ex(int line_size, int* column, const void* __restrict sr
 int rapidyenc_encode_kernel() {
 	return RapidYenc::encode_isa_level();
 }
-
 #endif // !defined(RAPIDYENC_DISABLE_ENCODE)
 
 size_t rapidyenc_encode_max_length(size_t length, int line_size) {
@@ -53,10 +50,7 @@ size_t rapidyenc_encode_max_length(size_t length, int line_size) {
 	return ret + 2 * ((length*2) / line_size);
 }
 
-
 #ifndef RAPIDYENC_DISABLE_DECODE
-
-#include "src/decoder.h"
 void rapidyenc_decode_init(void) {
 	static int done = 0;
 	if(done) return;
@@ -83,12 +77,9 @@ RapidYencDecoderEnd rapidyenc_decode_incremental(const void** src, void** dest, 
 int rapidyenc_decode_kernel() {
 	return RapidYenc::decode_isa_level();
 }
-
 #endif // !defined(RAPIDYENC_DISABLE_DECODE)
 
 #ifndef RAPIDYENC_DISABLE_CRC
-
-#include "src/crc.h"
 void rapidyenc_crc_init(void) {
 	static int done = 0;
 	if(done) return;
@@ -121,6 +112,9 @@ uint32_t rapidyenc_crc_256pow(uint64_t n) {
 int rapidyenc_crc_kernel() {
 	return RapidYenc::crc32_isa_level();
 }
-
 #endif // !defined(RAPIDYENC_DISABLE_CRC)
+
+#ifdef __cplusplus
+}
+#endif
 

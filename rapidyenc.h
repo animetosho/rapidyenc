@@ -1,5 +1,4 @@
-#ifndef __RAPIDYENC_H
-#define __RAPIDYENC_H
+#pragma once
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -128,7 +127,7 @@ RAPIDYENC_API void rapidyenc_decode_init(void);
 /**
  * yEnc decode the buffer at `src` (of length `src_length`) and write it to `dest`
  * Returns the number of bytes written to `dest`
- * 
+ *
  * This is effectively an alias for `rapidyenc_decode_ex(1, src, dest, src_length, NULL)`
  */
 RAPIDYENC_API size_t rapidyenc_decode(const void* src, void* dest, size_t src_length);
@@ -136,7 +135,7 @@ RAPIDYENC_API size_t rapidyenc_decode(const void* src, void* dest, size_t src_le
 /**
  * yEnc decode the buffer at `src` (of length `src_length`) and write it to `dest`
  * Returns the number of bytes written to `dest`
- * 
+ *
  * If `is_raw` is non-zero, will also handle NNTP dot unstuffing
  * `state` can be used to track the decoder state, if incremental decoding is desired. Set to NULL if tracking is not needed
  * `src` and `dest` are allowed to point to the same location for in-situ decoding, otherwise `dest` is assumed to be at least `src_length` in size
@@ -147,7 +146,7 @@ RAPIDYENC_API size_t rapidyenc_decode_ex(int is_raw, const void* src, void* dest
  * Like `rapidyenc_decode`, but stops decoding when a yEnc/NNTP end sequence is found
  * Returns whether such an end sequence was found
  * Note that the `is_raw` parameter in `rapidyenc_decode` is assumed to be True here
- * 
+ *
  * `src` and `dest` are pointers of pointers here, as they'll both be updated to the positions after decoding
  * The length of the written data can thus be derived from the post-decode `dest` minus the pre-decode `dest`
  * Whilst `src` and `dest` can point to the same memory, the pointers themselves should be different. In other words, `**src == **dest` is fine, but `*src == *dest` is not
@@ -222,4 +221,3 @@ RAPIDYENC_API int rapidyenc_crc_kernel();
 #ifdef __cplusplus
 }
 #endif
-#endif /* __RAPIDYENC_H */
