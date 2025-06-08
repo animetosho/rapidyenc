@@ -41,11 +41,17 @@ static int print_usage(const char *app) {
 #define LINE_SIZE 128
 
 int main(int argc, char **argv) {
+    // Print usage if -h or --help is present
+    for(int i = 1; i < argc; ++i) {
+        if(strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            return print_usage(argv[0]);
+        }
+    }
+
     // Check for correct usage and mode selection
-    if(argc < 2)
+    if(argc < 2 || (argv[1][0] != 'e' && argv[1][0] != 'd')) {
         return print_usage(argv[0]);
-    if(argv[1][0] != 'e' && argv[1][0] != 'd')
-        return print_usage(argv[0]);
+    }
 
     // Check if encoder/decoder is disabled at compile time
 #ifdef RAPIDYENC_DISABLE_ENCODE
