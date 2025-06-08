@@ -37,7 +37,14 @@ struct BenchConfig {
 BenchConfig parse_args(int argc, char** argv) {
     BenchConfig cfg;
     for(int i=1; i<argc; ++i) {
-        if(std::strcmp(argv[i], "--size") == 0 && i+1 < argc) {
+        if(std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0) {
+            std::cout << "Usage: rapidyenc_bench [--size <bytes>] [--reps <num>] [--bench <encode,decode,crc>] [--help]" << std::endl;
+            std::cout << "  --size <bytes>   Set the article size in bytes (default: 768000)" << std::endl;
+            std::cout << "  --reps <num>     Set the number of repetitions (default: 1000)" << std::endl;
+            std::cout << "  --bench <list>   Comma-separated list of benchmarks to run (encode,decode,crc)" << std::endl;
+            std::cout << "  --help, -h       Show this help message and exit" << std::endl;
+            std::exit(0);
+        } else if(std::strcmp(argv[i], "--size") == 0 && i+1 < argc) {
             cfg.article_size = std::stoull(argv[++i]);
         } else if(std::strcmp(argv[i], "--reps") == 0 && i+1 < argc) {
             cfg.repetitions = std::stoi(argv[++i]);
