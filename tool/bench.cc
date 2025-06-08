@@ -56,11 +56,42 @@ int main(int argc, char** argv) {
     // Allocate input data buffer and output buffer for encoded article
     std::vector<unsigned char> data(cfg.article_size);
     std::vector<unsigned char> article(rapidyenc_encode_max_length(cfg.article_size, 128));
-    size_t article_length;
+    size_t article_length = 0;
 
     // Fill input buffer with random data for benchmarking
     for(auto& c : data)
         c = rand() & 0xff;
+
+    // If decode is requested but encode is not, ensure article buffer is filled with valid yEnc data
+#ifndef RAPIDYENC_DISABLE_ENCODE
+    if(cfg.run_decode && !cfg.run_encode) {
+        rapidyenc_encode_init();
+        article_length = rapidyenc_encode(data.data(), article.data(), cfg.article_size);
+    }
+#else
+    if(cfg.run_decode && !cfg.run_encode) {
+        unsigned char* pOut = article.data();
+        int col = 0;
+        for(unsigned i=0; i<cfg.article_size; i++) {
+            unsigned char c = data[i];
+            if(c == 0 || c == '\r' || c == '\n' || c == '=' ||
+              (col == 0 && c == '.') ||
+              ((col % 128 == 0) && (c == '\t' || c == ' '))) {
+                *pOut++ = '=';
+                *pOut++ = c + 64;
+                col++;
+            } else {
+                *pOut++ = c;
+            }
+            if(++col >= 128) {
+                *pOut++ = '\r';
+                *pOut++ = '\n';
+                col = 0;
+            }
+        }
+        article_length = pOut - article.data();
+    }
+#endif
 
     // --- Encode benchmark ---
 #ifndef RAPIDYENC_DISABLE_ENCODE
