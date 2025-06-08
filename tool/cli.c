@@ -5,7 +5,7 @@
  * using the rapidyenc library. It reads from stdin and writes to stdout, supporting both
  * encoding and decoding modes, and optionally computes CRC32 checksums.
  *
- * Usage: cli {e|d}
+ * Usage: cli {e|d} [infile [outfile]]
  *   e: encode stdin to stdout
  *   d: decode stdin to stdout
  *
@@ -32,8 +32,9 @@
 
 static int print_usage(const char *app) {
 	fprintf(stderr, "Sample rapidyenc application\n");
-	fprintf(stderr, "Usage: %s {e|d}\n", app);
-	fprintf(stderr, "  (e)ncodes or (d)ecodes stdin to stdout\n");
+	fprintf(stderr, "Usage: %s {e|d} [infile [outfile]]\n", app);
+	fprintf(stderr, "  (e)ncodes or (d)ecodes input to output (default: stdin/stdout)\n");
+	fprintf(stderr, "  -h, --help   Show this help message\n");
 	return EXIT_FAILURE;
 }
 
@@ -67,17 +68,23 @@ int main(int argc, char **argv) {
     }
 #endif
 
-    // Open input and output streams (stdin/stdout)
-    FILE* infile = stdin; // could be replaced with file input
-    if(!infile) {
-        fprintf(stderr, "error opening input: %s\n", strerror(errno));
-        return EXIT_FAILURE;
+    // Optional file arguments
+    FILE* infile = stdin;
+    FILE* outfile = stdout;
+    if(argc >= 3) {
+        infile = fopen(argv[2], "rb");
+        if(!infile) {
+            fprintf(stderr, "error opening input file '%s': %s\n", argv[2], strerror(errno));
+            return EXIT_FAILURE;
+        }
     }
-    FILE* outfile = stdout; // could be replaced with file output
-    if(!outfile) {
-        fprintf(stderr, "error opening output: %s\n", strerror(errno));
-        fclose(infile);
-        return EXIT_FAILURE;
+    if(argc >= 4) {
+        outfile = fopen(argv[3], "wb");
+        if(!outfile) {
+            fprintf(stderr, "error opening output file '%s': %s\n", argv[3], strerror(errno));
+            if(infile && infile != stdin) fclose(infile);
+            return EXIT_FAILURE;
+        }
     }
 
     // Allocate input buffer
@@ -194,8 +201,8 @@ int main(int argc, char **argv) {
 
     // Clean up resources
     fflush(outfile);
-    fclose(infile);
-    fclose(outfile);
+    if(infile && infile != stdin) fclose(infile);
+    if(outfile && outfile != stdout) fclose(outfile);
     free(data);
 
     // Print CRC32 if enabled and no error occurred
