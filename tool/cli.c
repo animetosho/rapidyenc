@@ -42,46 +42,48 @@ static int print_usage(const char *app) {
 #define LINE_SIZE 128
 
 int main(int argc, char **argv) {
-    // Print usage if -h or --help is present
+    // Argument parsing
+    const char *mode = NULL, *infile_name = NULL, *outfile_name = NULL;
     for(int i = 1; i < argc; ++i) {
         if(strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             return print_usage(argv[0]);
         }
     }
-
-    // Check for correct usage and mode selection
-    if(argc < 2 || (argv[1][0] != 'e' && argv[1][0] != 'd')) {
+    if(argc >= 2 && (strcmp(argv[1], "e") == 0 || strcmp(argv[1], "d") == 0)) {
+        mode = argv[1];
+        if(argc >= 3) infile_name = argv[2];
+        if(argc >= 4) outfile_name = argv[3];
+    } else {
         return print_usage(argv[0]);
     }
 
     // Check if encoder/decoder is disabled at compile time
 #ifdef RAPIDYENC_DISABLE_ENCODE
-    if(argv[1][0] == 'e') {
+    if(mode && mode[0] == 'e') {
         fprintf(stderr, "encoder has been disabled in this build\n");
         return EXIT_FAILURE;
     }
 #endif
 #ifdef RAPIDYENC_DISABLE_DECODE
-    if(argv[1][0] == 'd') {
+    if(mode && mode[0] == 'd') {
         fprintf(stderr, "decoder has been disabled in this build\n");
         return EXIT_FAILURE;
     }
 #endif
 
-    // Optional file arguments
     FILE* infile = stdin;
     FILE* outfile = stdout;
-    if(argc >= 3) {
-        infile = fopen(argv[2], "rb");
+    if(infile_name) {
+        infile = fopen(infile_name, "rb");
         if(!infile) {
-            fprintf(stderr, "error opening input file '%s': %s\n", argv[2], strerror(errno));
+            fprintf(stderr, "error opening input file '%s': %s\n", infile_name, strerror(errno));
             return EXIT_FAILURE;
         }
     }
-    if(argc >= 4) {
-        outfile = fopen(argv[3], "wb");
+    if(outfile_name) {
+        outfile = fopen(outfile_name, "wb");
         if(!outfile) {
-            fprintf(stderr, "error opening output file '%s': %s\n", argv[3], strerror(errno));
+            fprintf(stderr, "error opening output file '%s': %s\n", outfile_name, strerror(errno));
             if(infile && infile != stdin) fclose(infile);
             return EXIT_FAILURE;
         }
@@ -104,7 +106,7 @@ int main(int argc, char **argv) {
     int has_error = 0;
 
 #ifndef RAPIDYENC_DISABLE_ENCODE
-    if(argv[1][0] == 'e') {
+    if(mode && mode[0] == 'e') {
         // --- Encoding mode ---
         // Allocate output buffer large enough for encoded data
         size_t output_size = rapidyenc_encode_max_length(BUFFER_SIZE, LINE_SIZE);
@@ -150,7 +152,7 @@ int main(int argc, char **argv) {
     }
 #endif
 #ifndef RAPIDYENC_DISABLE_DECODE
-    if(argv[1][0] == 'd') {
+    if(mode && mode[0] == 'd') {
         // --- Decoding mode ---
         rapidyenc_decode_init();
 
