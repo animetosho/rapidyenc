@@ -83,7 +83,7 @@ int main(int argc, char **argv) {
     // Allocate input buffer
     void* data = malloc(BUFFER_SIZE);
     if(!data) {
-        fprintf(stderr, "error allocating input buffer\n");
+        fprintf(stderr, "error allocating input buffer of size %d bytes\n", BUFFER_SIZE);
         fclose(infile);
         fclose(outfile);
         return EXIT_FAILURE;
@@ -100,9 +100,10 @@ int main(int argc, char **argv) {
     if(argv[1][0] == 'e') {
         // --- Encoding mode ---
         // Allocate output buffer large enough for encoded data
-        void* output = malloc(rapidyenc_encode_max_length(BUFFER_SIZE, LINE_SIZE));
+        size_t output_size = rapidyenc_encode_max_length(BUFFER_SIZE, LINE_SIZE);
+        void* output = malloc(output_size);
         if(!output) {
-            fprintf(stderr, "error allocating output buffer\n");
+            fprintf(stderr, "error allocating output buffer of size %zu bytes\n", output_size);
             fclose(infile);
             fclose(outfile);
             free(data);
