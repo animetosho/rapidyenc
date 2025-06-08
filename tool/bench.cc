@@ -3,7 +3,6 @@
 #include <chrono>
 #include <cstring> // for std::strcmp
 #include <thread>
-#include <atomic>
 #include <iomanip>
 #include <string>
 
