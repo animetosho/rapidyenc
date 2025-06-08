@@ -193,6 +193,7 @@ int main(int argc, char **argv) {
 #endif
 
     // Clean up resources
+    fflush(outfile);
     fclose(infile);
     fclose(outfile);
     free(data);
