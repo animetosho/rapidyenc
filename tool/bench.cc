@@ -105,9 +105,11 @@ int main(int argc, char** argv) {
         }
         auto stop = std::chrono::high_resolution_clock::now();
         float us = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
+        double ms = us / 1000.0;
         double speed = cfg.article_size * cfg.repetitions;
         speed = speed / us / 1.048576;
-        std::cerr << "Encode (" << kernel_to_str(kernel) << ", size=" << cfg.article_size << ", reps=" << cfg.repetitions << "): " << speed << " MB/s" << std::endl;
+        std::cerr << "Encode (" << kernel_to_str(kernel) << ", size=" << cfg.article_size << ", reps=" << cfg.repetitions << "): "
+                  << speed << " MB/s, time: " << ms << " ms" << std::endl;
     }
 #else
     if(cfg.run_encode) {
@@ -147,9 +149,11 @@ int main(int argc, char** argv) {
         }
         auto stop = std::chrono::high_resolution_clock::now();
         float us = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
+        double ms = us / 1000.0;
         double speed = article_length * cfg.repetitions;
         speed = speed / us / 1.048576;
-        std::cerr << "Decode (" << kernel_to_str(kernel) << ", size=" << article_length << ", reps=" << cfg.repetitions << "): " << speed << " MB/s" << std::endl;
+        std::cerr << "Decode (" << kernel_to_str(kernel) << ", size=" << article_length << ", reps=" << cfg.repetitions << "): "
+                  << speed << " MB/s, time: " << ms << " ms" << std::endl;
     }
 #endif
 
@@ -165,9 +169,11 @@ int main(int argc, char** argv) {
         }
         auto stop = std::chrono::high_resolution_clock::now();
         float us = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
+        double ms = us / 1000.0;
         double speed = cfg.article_size * cfg.repetitions;
         speed = speed / us / 1.048576;
-        std::cerr << "CRC32 (" << kernel_to_str(kernel) << ", size=" << cfg.article_size << ", reps=" << cfg.repetitions << "): " << speed << " MB/s" << std::endl;
+        std::cerr << "CRC32 (" << kernel_to_str(kernel) << ", size=" << cfg.article_size << ", reps=" << cfg.repetitions << "): "
+                  << speed << " MB/s, time: " << ms << " ms" << std::endl;
 
         // --- CRC32 256^n benchmark ---
         std::vector<uint64_t> rnd_n(SINGLE_OP_NUM);
@@ -183,9 +189,10 @@ int main(int argc, char** argv) {
         }
         stop = std::chrono::high_resolution_clock::now();
         us = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
+        ms = us / 1000.0;
         speed = SINGLE_OP_NUM * cfg.repetitions;
         speed = speed / us;
-        std::cerr << "CRC32 256^n: " << speed << " Mop/s" << std::endl;
+        std::cerr << "CRC32 256^n: " << speed << " Mop/s, time: " << ms << " ms" << std::endl;
     }
 #endif
 
