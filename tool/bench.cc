@@ -4,6 +4,7 @@
 #include <cstring> // for std::strcmp
 #include <thread>
 #include <atomic>
+#include <iomanip>
 
 #include "../rapidyenc.h"
 
@@ -109,7 +110,14 @@ int main(int argc, char** argv) {
 
     // Only run threaded benchmarks if threads > 1, else run single-threaded
     if(cfg.threads > 1) {
-        std::cerr << "Running threaded benchmarks with " << cfg.threads << " threads..." << std::endl;
+        std::cout << std::left
+                  << std::setw(12) << "Benchmark"
+                  << std::setw(10) << "Kernel"
+                  << std::setw(10) << "Size"
+                  << std::setw(10) << "Reps"
+                  << std::setw(10) << "Threads"
+                  << std::setw(18) << "Speed(MB/s|Mop/s)"
+                  << std::setw(10) << "Time(ms)" << std::endl;
         // --- Encode benchmark ---
 #ifndef RAPIDYENC_DISABLE_ENCODE
         if(cfg.run_encode) {
@@ -120,7 +128,6 @@ int main(int argc, char** argv) {
             auto start = std::chrono::high_resolution_clock::now();
             for(int t=0; t<cfg.threads; ++t) {
                 threads.emplace_back([&, t]() {
-                    std::cerr << "[thread " << t << "] started\n";
                     std::vector<unsigned char> data_t = data;
                     std::vector<unsigned char> article_t = article;
                     int reps = cfg.repetitions / cfg.threads + (t < (cfg.repetitions % cfg.threads) ? 1 : 0);
@@ -137,9 +144,15 @@ int main(int argc, char** argv) {
             double ms = us / 1000.0;
             double speed = cfg.article_size * cfg.repetitions;
             speed = speed / us / 1.048576;
-            std::cerr << "Encode (" << kernel_to_str(kernel) << ", size=" << cfg.article_size << ", reps=" << cfg.repetitions << ", threads=" << cfg.threads << "): "
-                      << speed << " MB/s, time: " << ms << " ms" << std::endl;
-            article_length = thread_article_length[0]; // Use first thread's result for decode
+            std::cout << std::left
+                      << std::setw(12) << "Encode"
+                      << std::setw(10) << kernel_to_str(kernel)
+                      << std::setw(10) << cfg.article_size
+                      << std::setw(10) << cfg.repetitions
+                      << std::setw(10) << cfg.threads
+                      << std::setw(18) << speed
+                      << std::setw(10) << ms << std::endl;
+            article_length = thread_article_length[0];
         }
 #endif
         // --- Decode benchmark ---
@@ -151,8 +164,7 @@ int main(int argc, char** argv) {
             auto start = std::chrono::high_resolution_clock::now();
             for(int t=0; t<cfg.threads; ++t) {
                 threads.emplace_back([&, t]() {
-                    std::cerr << "[thread " << t << "] started\n";
-                    std::vector<unsigned char> data_t(cfg.article_size);
+                    std::vector<unsigned char> data_t(article_length);
                     std::vector<unsigned char> article_t = article;
                     int reps = cfg.repetitions / cfg.threads + (t < (cfg.repetitions % cfg.threads) ? 1 : 0);
                     for(int i=0; i<reps; i++) {
@@ -166,8 +178,14 @@ int main(int argc, char** argv) {
             double ms = us / 1000.0;
             double speed = article_length * cfg.repetitions;
             speed = speed / us / 1.048576;
-            std::cerr << "Decode (" << kernel_to_str(kernel) << ", size=" << article_length << ", reps=" << cfg.repetitions << ", threads=" << cfg.threads << "): "
-                      << speed << " MB/s, time: " << ms << " ms" << std::endl;
+            std::cout << std::left
+                      << std::setw(12) << "Decode"
+                      << std::setw(10) << kernel_to_str(kernel)
+                      << std::setw(10) << article_length
+                      << std::setw(10) << cfg.repetitions
+                      << std::setw(10) << cfg.threads
+                      << std::setw(18) << speed
+                      << std::setw(10) << ms << std::endl;
         }
 #endif
         // --- CRC32 benchmark ---
@@ -179,7 +197,6 @@ int main(int argc, char** argv) {
             auto start = std::chrono::high_resolution_clock::now();
             for(int t=0; t<cfg.threads; ++t) {
                 threads.emplace_back([&, t]() {
-                    std::cerr << "[thread " << t << "] started\n";
                     std::vector<unsigned char> data_t = data;
                     int reps = cfg.repetitions / cfg.threads + (t < (cfg.repetitions % cfg.threads) ? 1 : 0);
                     for(int i=0; i<reps; i++) {
@@ -193,18 +210,23 @@ int main(int argc, char** argv) {
             double ms = us / 1000.0;
             double speed = cfg.article_size * cfg.repetitions;
             speed = speed / us / 1.048576;
-            std::cerr << "CRC32 (" << kernel_to_str(kernel) << ", size=" << cfg.article_size << ", reps=" << cfg.repetitions << ", threads=" << cfg.threads << "): "
-                      << speed << " MB/s, time: " << ms << " ms" << std::endl;
+            std::cout << std::left
+                      << std::setw(12) << "CRC32"
+                      << std::setw(10) << kernel_to_str(kernel)
+                      << std::setw(10) << cfg.article_size
+                      << std::setw(10) << cfg.repetitions
+                      << std::setw(10) << cfg.threads
+                      << std::setw(18) << speed
+                      << std::setw(10) << ms << std::endl;
             // --- CRC32 256^n benchmark ---
             std::vector<uint64_t> rnd_n(SINGLE_OP_NUM);
             std::vector<uint32_t> rnd_out(SINGLE_OP_NUM);
             for(auto& c : rnd_n)
-                c = ((rand() & 0xffff) << 20) | (rand() & 0xfffff);  // 36-bit random numbers
+                c = ((rand() & 0xffff) << 20) | (rand() & 0xfffff);
             start = std::chrono::high_resolution_clock::now();
             std::vector<std::thread> threads2;
             for(int t=0; t<cfg.threads; ++t) {
                 threads2.emplace_back([&, t]() {
-                    std::cerr << "[thread " << t << "] started\n";
                     int reps = cfg.repetitions / cfg.threads + (t < (cfg.repetitions % cfg.threads) ? 1 : 0);
                     for(int i=0; i<reps; i++) {
                         for(unsigned j=0; j<SINGLE_OP_NUM; j++)
@@ -218,11 +240,28 @@ int main(int argc, char** argv) {
             double ms2 = us2 / 1000.0;
             double speed2 = SINGLE_OP_NUM * cfg.repetitions;
             speed2 = speed2 / us2;
-            std::cerr << "CRC32 256^n: " << speed2 << " Mop/s, time: " << ms2 << " ms (threads=" << cfg.threads << ")" << std::endl;
+            std::cout << std::left
+                      << std::setw(12) << "CRC32_256^n"
+                      << std::setw(10) << "-"
+                      << std::setw(10) << "-"
+                      << std::setw(10) << cfg.repetitions
+                      << std::setw(10) << cfg.threads
+                      << std::setw(18) << speed2
+                      << std::setw(10) << ms2 << std::endl;
         }
 #endif
         return 0;
     }
+
+    // Tabular header for single-threaded output
+    std::cout << std::left
+              << std::setw(12) << "Benchmark"
+              << std::setw(10) << "Kernel"
+              << std::setw(10) << "Size"
+              << std::setw(10) << "Reps"
+              << std::setw(10) << "Threads"
+              << std::setw(18) << "Speed(MB/s|Mop/s)"
+              << std::setw(10) << "Time(ms)" << std::endl;
 
     // --- Encode benchmark ---
 #ifndef RAPIDYENC_DISABLE_ENCODE
@@ -239,8 +278,14 @@ int main(int argc, char** argv) {
         double ms = us / 1000.0;
         double speed = cfg.article_size * cfg.repetitions;
         speed = speed / us / 1.048576;
-        std::cerr << "Encode (" << kernel_to_str(kernel) << ", size=" << cfg.article_size << ", reps=" << cfg.repetitions << "): "
-                  << speed << " MB/s, time: " << ms << " ms" << std::endl;
+        std::cout << std::left
+                  << std::setw(12) << "Encode"
+                  << std::setw(10) << kernel_to_str(kernel)
+                  << std::setw(10) << cfg.article_size
+                  << std::setw(10) << cfg.repetitions
+                  << std::setw(10) << 1
+                  << std::setw(18) << speed
+                  << std::setw(10) << ms << std::endl;
     }
 #else
     if(cfg.run_encode) {
@@ -283,8 +328,14 @@ int main(int argc, char** argv) {
         double ms = us / 1000.0;
         double speed = article_length * cfg.repetitions;
         speed = speed / us / 1.048576;
-        std::cerr << "Decode (" << kernel_to_str(kernel) << ", size=" << article_length << ", reps=" << cfg.repetitions << "): "
-                  << speed << " MB/s, time: " << ms << " ms" << std::endl;
+        std::cout << std::left
+                  << std::setw(12) << "Decode"
+                  << std::setw(10) << kernel_to_str(kernel)
+                  << std::setw(10) << article_length
+                  << std::setw(10) << cfg.repetitions
+                  << std::setw(10) << 1
+                  << std::setw(18) << speed
+                  << std::setw(10) << ms << std::endl;
     }
 #endif
 
@@ -303,8 +354,14 @@ int main(int argc, char** argv) {
         double ms = us / 1000.0;
         double speed = cfg.article_size * cfg.repetitions;
         speed = speed / us / 1.048576;
-        std::cerr << "CRC32 (" << kernel_to_str(kernel) << ", size=" << cfg.article_size << ", reps=" << cfg.repetitions << "): "
-                  << speed << " MB/s, time: " << ms << " ms" << std::endl;
+        std::cout << std::left
+                  << std::setw(12) << "CRC32"
+                  << std::setw(10) << kernel_to_str(kernel)
+                  << std::setw(10) << cfg.article_size
+                  << std::setw(10) << cfg.repetitions
+                  << std::setw(10) << 1
+                  << std::setw(18) << speed
+                  << std::setw(10) << ms << std::endl;
 
         // --- CRC32 256^n benchmark ---
         std::vector<uint64_t> rnd_n(SINGLE_OP_NUM);
@@ -323,7 +380,14 @@ int main(int argc, char** argv) {
         ms = us / 1000.0;
         speed = SINGLE_OP_NUM * cfg.repetitions;
         speed = speed / us;
-        std::cerr << "CRC32 256^n: " << speed << " Mop/s, time: " << ms << " ms" << std::endl;
+        std::cout << std::left
+                  << std::setw(12) << "CRC32_256^n"
+                  << std::setw(10) << "-"
+                  << std::setw(10) << "-"
+                  << std::setw(10) << cfg.repetitions
+                  << std::setw(10) << 1
+                  << std::setw(18) << speed
+                  << std::setw(10) << ms << std::endl;
     }
 #endif
 
