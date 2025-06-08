@@ -34,7 +34,7 @@ static int print_usage(const char *app) {
 	fprintf(stderr, "Sample rapidyenc application\n");
 	fprintf(stderr, "Usage: %s {e|d}\n", app);
 	fprintf(stderr, "  (e)ncodes or (d)ecodes stdin to stdout\n");
-	return 1;
+	return EXIT_FAILURE;
 }
 
 #define BUFFER_SIZE 65536
@@ -51,13 +51,13 @@ int main(int argc, char **argv) {
 #ifdef RAPIDYENC_DISABLE_ENCODE
     if(argv[1][0] == 'e') {
         fprintf(stderr, "encoder has been disabled in this build\n");
-        return 1;
+        return EXIT_FAILURE;
     }
 #endif
 #ifdef RAPIDYENC_DISABLE_DECODE
     if(argv[1][0] == 'd') {
         fprintf(stderr, "decoder has been disabled in this build\n");
-        return 1;
+        return EXIT_FAILURE;
     }
 #endif
 
@@ -65,13 +65,13 @@ int main(int argc, char **argv) {
     FILE* infile = stdin; // could be replaced with file input
     if(!infile) {
         fprintf(stderr, "error opening input: %s\n", strerror(errno));
-        return 1;
+        return EXIT_FAILURE;
     }
     FILE* outfile = stdout; // could be replaced with file output
     if(!outfile) {
         fprintf(stderr, "error opening output: %s\n", strerror(errno));
         fclose(infile);
-        return 1;
+        return EXIT_FAILURE;
     }
 
     // Allocate input buffer
@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "error allocating input buffer\n");
         fclose(infile);
         fclose(outfile);
-        return 1;
+        return EXIT_FAILURE;
     }
 
 #ifndef RAPIDYENC_DISABLE_CRC
@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
             fclose(infile);
             fclose(outfile);
             free(data);
-            return 1;
+            return EXIT_FAILURE;
         }
         rapidyenc_encode_init();
 
@@ -197,5 +197,5 @@ int main(int argc, char **argv) {
 #endif
     }
 
-    return 0;
+    return has_error ? EXIT_FAILURE : EXIT_SUCCESS;
 }
