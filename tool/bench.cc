@@ -5,6 +5,7 @@
 #include <thread>
 #include <atomic>
 #include <iomanip>
+#include <string>
 
 #include "../rapidyenc.h"
 
