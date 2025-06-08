@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
         }
         rapidyenc_encode_init();
 
-        int column = 0;
+        size_t column = 0;
         while(1) {
             // Read a chunk from input
             size_t read = fread(data, 1, BUFFER_SIZE, infile);
@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
                 break;
             }
             // Encode the chunk
-            size_t out_len = rapidyenc_encode_ex(LINE_SIZE, &column, data, output, read, eof);
+            size_t out_len = rapidyenc_encode_ex(LINE_SIZE, (int*)&column, data, output, read, eof);
 #ifndef RAPIDYENC_DISABLE_CRC
             // Update CRC32 with original data
             crc = rapidyenc_crc(data, read, crc);
