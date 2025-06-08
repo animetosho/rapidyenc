@@ -36,7 +36,7 @@ endif()
 if (${TARGET_ARCH} MATCHES "arm|ARM|aarch64|arm64|ARM64")
 	CHECK_CXX_SYMBOL_EXISTS(__aarch64__ "" COMPILER_HAS_AARCH64)
 	CHECK_CXX_SYMBOL_EXISTS(_M_ARM64 "" COMPILER_HAS_ARM64)
-	
+
 	if(COMPILER_HAS_AARCH64 OR COMPILER_HAS_ARM64)
 		set(IS_ARM64 TRUE)
 	else()
@@ -125,19 +125,19 @@ if(NOT DISABLE_CRC)
 		${SRC_DIR}/crc_arm_pmull.cc
 		${SRC_DIR}/crc_riscv.cc
 	)
-	
+
 	if(NOT DISABLE_CRCUTIL)
 		set(CRCUTIL_DIR ./crcutil-1.0)
 		set(RAPIDYENC_SOURCES ${RAPIDYENC_SOURCES}
-			${CRCUTIL_DIR}/code/crc32c_sse4.cc 
-			${CRCUTIL_DIR}/code/multiword_64_64_cl_i386_mmx.cc 
-			${CRCUTIL_DIR}/code/multiword_64_64_gcc_amd64_asm.cc 
-			${CRCUTIL_DIR}/code/multiword_64_64_gcc_i386_mmx.cc 
-			${CRCUTIL_DIR}/code/multiword_64_64_intrinsic_i386_mmx.cc 
-			${CRCUTIL_DIR}/code/multiword_128_64_gcc_amd64_sse2.cc 
+			${CRCUTIL_DIR}/code/crc32c_sse4.cc
+			${CRCUTIL_DIR}/code/multiword_64_64_cl_i386_mmx.cc
+			${CRCUTIL_DIR}/code/multiword_64_64_gcc_amd64_asm.cc
+			${CRCUTIL_DIR}/code/multiword_64_64_gcc_i386_mmx.cc
+			${CRCUTIL_DIR}/code/multiword_64_64_intrinsic_i386_mmx.cc
+			${CRCUTIL_DIR}/code/multiword_128_64_gcc_amd64_sse2.cc
 			${CRCUTIL_DIR}/examples/interface.cc
 		)
-		
+
 		include_directories(${CRCUTIL_DIR}/code ${CRCUTIL_DIR}/examples ${CRCUTIL_DIR}/tests)
 		add_compile_definitions(CRCUTIL_USE_MM_CRC32=0)
 	endif()
@@ -155,7 +155,7 @@ else()
 	if(NOT ${CMAKE_BUILD_TYPE} MATCHES "Debug")
 		add_compile_options(-fomit-frame-pointer)
 	endif()
-	
+
 	# posix_memalign may require _POSIX_C_SOURCE, but MacOS might not like it
 	include(CheckSymbolExists)
 	check_symbol_exists(posix_memalign "stdlib.h" HAVE_MEMALIGN)
@@ -202,12 +202,12 @@ if(NOT MSVC OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 		if(COMPILER_SUPPORTS_VPCLMULQDQ)
 			set_source_files_properties(${SRC_DIR}/crc_folding_256.cc PROPERTIES COMPILE_OPTIONS "-mavx2;-mvpclmulqdq;-mpclmul")
 		endif()
-		
+
 		if(IS_X32)
 			add_compile_definitions(CRCUTIL_USE_ASM=0)
 		endif()
 	endif()
-	
+
 	if(IS_ARM32)
 		CHECK_CXX_COMPILER_FLAG("-mfpu=neon -march=armv7-a" COMPILER_SUPPORTS_ARM32_NEON)
 		if(COMPILER_SUPPORTS_ARM32_NEON)
@@ -233,7 +233,7 @@ if(NOT MSVC OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 			set_source_files_properties(${SRC_DIR}/crc_arm_pmull.cc PROPERTIES COMPILE_OPTIONS -march=armv8-a+crypto+crc)
 		endif()
 	endif()
-	
+
 	if(IS_RISCV64)
 		CHECK_CXX_COMPILER_FLAG("-march=rv64gcv" COMPILER_SUPPORTS_RVV)
 		if(COMPILER_SUPPORTS_RVV)
@@ -271,5 +271,5 @@ set_target_properties(rapidyenc_shared PROPERTIES OUTPUT_NAME rapidyenc ARCHIVE_
 add_executable(rapidyenc_cli tool/cli.c)
 target_link_libraries(rapidyenc_cli rapidyenc_static)
 add_executable(rapidyenc_bench tool/bench.cc)
-target_link_libraries(rapidyenc_bench rapidyenc_static)
+target_link_libraries(rapidyenc_bench rapidyenc_static pthread)
 target_compile_features(rapidyenc_bench PUBLIC cxx_std_11)

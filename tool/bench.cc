@@ -2,6 +2,8 @@
 #include <vector>
 #include <chrono>
 #include <cstring> // for std::strcmp
+#include <thread>
+#include <atomic>
 
 #include "../rapidyenc.h"
 
@@ -32,16 +34,18 @@ struct BenchConfig {
     bool run_encode = true;
     bool run_decode = true;
     bool run_crc = true;
+    int threads = 1;
 };
 
 BenchConfig parse_args(int argc, char** argv) {
     BenchConfig cfg;
     for(int i=1; i<argc; ++i) {
         if(std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0) {
-            std::cout << "Usage: rapidyenc_bench [--size <bytes>] [--reps <num>] [--bench <encode,decode,crc>] [--help]" << std::endl;
+            std::cout << "Usage: rapidyenc_bench [--size <bytes>] [--reps <num>] [--bench <encode,decode,crc>] [--threads <n>] [--help]" << std::endl;
             std::cout << "  --size <bytes>   Set the article size in bytes (default: 768000)" << std::endl;
             std::cout << "  --reps <num>     Set the number of repetitions (default: 1000)" << std::endl;
             std::cout << "  --bench <list>   Comma-separated list of benchmarks to run (encode,decode,crc)" << std::endl;
+            std::cout << "  --threads <n>    Number of threads to use (default: 1)" << std::endl;
             std::cout << "  --help, -h       Show this help message and exit" << std::endl;
             std::exit(0);
         } else if(std::strcmp(argv[i], "--size") == 0 && i+1 < argc) {
@@ -53,6 +57,9 @@ BenchConfig parse_args(int argc, char** argv) {
             cfg.run_encode = b.find("encode") != std::string::npos;
             cfg.run_decode = b.find("decode") != std::string::npos;
             cfg.run_crc = b.find("crc") != std::string::npos;
+        } else if(std::strcmp(argv[i], "--threads") == 0 && i+1 < argc) {
+            cfg.threads = std::stoi(argv[++i]);
+            if(cfg.threads < 1) cfg.threads = 1;
         }
     }
     return cfg;
@@ -99,6 +106,123 @@ int main(int argc, char** argv) {
         article_length = pOut - article.data();
     }
 #endif
+
+    // Only run threaded benchmarks if threads > 1, else run single-threaded
+    if(cfg.threads > 1) {
+        std::cerr << "Running threaded benchmarks with " << cfg.threads << " threads..." << std::endl;
+        // --- Encode benchmark ---
+#ifndef RAPIDYENC_DISABLE_ENCODE
+        if(cfg.run_encode) {
+            rapidyenc_encode_init();
+            auto kernel = rapidyenc_encode_kernel();
+            std::vector<std::thread> threads;
+            std::vector<size_t> thread_article_length(cfg.threads, 0);
+            auto start = std::chrono::high_resolution_clock::now();
+            for(int t=0; t<cfg.threads; ++t) {
+                threads.emplace_back([&, t]() {
+                    std::cerr << "[thread " << t << "] started\n";
+                    std::vector<unsigned char> data_t = data;
+                    std::vector<unsigned char> article_t = article;
+                    int reps = cfg.repetitions / cfg.threads + (t < (cfg.repetitions % cfg.threads) ? 1 : 0);
+                    size_t local_len = 0;
+                    for(int i=0; i<reps; i++) {
+                        local_len = rapidyenc_encode(data_t.data(), article_t.data(), cfg.article_size);
+                    }
+                    thread_article_length[t] = local_len;
+                });
+            }
+            for(auto& th : threads) th.join();
+            auto stop = std::chrono::high_resolution_clock::now();
+            float us = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
+            double ms = us / 1000.0;
+            double speed = cfg.article_size * cfg.repetitions;
+            speed = speed / us / 1.048576;
+            std::cerr << "Encode (" << kernel_to_str(kernel) << ", size=" << cfg.article_size << ", reps=" << cfg.repetitions << ", threads=" << cfg.threads << "): "
+                      << speed << " MB/s, time: " << ms << " ms" << std::endl;
+            article_length = thread_article_length[0]; // Use first thread's result for decode
+        }
+#endif
+        // --- Decode benchmark ---
+#ifndef RAPIDYENC_DISABLE_DECODE
+        if(cfg.run_decode) {
+            rapidyenc_decode_init();
+            auto kernel = rapidyenc_decode_kernel();
+            std::vector<std::thread> threads;
+            auto start = std::chrono::high_resolution_clock::now();
+            for(int t=0; t<cfg.threads; ++t) {
+                threads.emplace_back([&, t]() {
+                    std::cerr << "[thread " << t << "] started\n";
+                    std::vector<unsigned char> data_t(cfg.article_size);
+                    std::vector<unsigned char> article_t = article;
+                    int reps = cfg.repetitions / cfg.threads + (t < (cfg.repetitions % cfg.threads) ? 1 : 0);
+                    for(int i=0; i<reps; i++) {
+                        rapidyenc_decode(article_t.data(), data_t.data(), article_length);
+                    }
+                });
+            }
+            for(auto& th : threads) th.join();
+            auto stop = std::chrono::high_resolution_clock::now();
+            float us = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
+            double ms = us / 1000.0;
+            double speed = article_length * cfg.repetitions;
+            speed = speed / us / 1.048576;
+            std::cerr << "Decode (" << kernel_to_str(kernel) << ", size=" << article_length << ", reps=" << cfg.repetitions << ", threads=" << cfg.threads << "): "
+                      << speed << " MB/s, time: " << ms << " ms" << std::endl;
+        }
+#endif
+        // --- CRC32 benchmark ---
+#ifndef RAPIDYENC_DISABLE_CRC
+        if(cfg.run_crc) {
+            rapidyenc_crc_init();
+            auto kernel = rapidyenc_crc_kernel();
+            std::vector<std::thread> threads;
+            auto start = std::chrono::high_resolution_clock::now();
+            for(int t=0; t<cfg.threads; ++t) {
+                threads.emplace_back([&, t]() {
+                    std::cerr << "[thread " << t << "] started\n";
+                    std::vector<unsigned char> data_t = data;
+                    int reps = cfg.repetitions / cfg.threads + (t < (cfg.repetitions % cfg.threads) ? 1 : 0);
+                    for(int i=0; i<reps; i++) {
+                        rapidyenc_crc(data_t.data(), cfg.article_size, 0);
+                    }
+                });
+            }
+            for(auto& th : threads) th.join();
+            auto stop = std::chrono::high_resolution_clock::now();
+            float us = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
+            double ms = us / 1000.0;
+            double speed = cfg.article_size * cfg.repetitions;
+            speed = speed / us / 1.048576;
+            std::cerr << "CRC32 (" << kernel_to_str(kernel) << ", size=" << cfg.article_size << ", reps=" << cfg.repetitions << ", threads=" << cfg.threads << "): "
+                      << speed << " MB/s, time: " << ms << " ms" << std::endl;
+            // --- CRC32 256^n benchmark ---
+            std::vector<uint64_t> rnd_n(SINGLE_OP_NUM);
+            std::vector<uint32_t> rnd_out(SINGLE_OP_NUM);
+            for(auto& c : rnd_n)
+                c = ((rand() & 0xffff) << 20) | (rand() & 0xfffff);  // 36-bit random numbers
+            start = std::chrono::high_resolution_clock::now();
+            std::vector<std::thread> threads2;
+            for(int t=0; t<cfg.threads; ++t) {
+                threads2.emplace_back([&, t]() {
+                    std::cerr << "[thread " << t << "] started\n";
+                    int reps = cfg.repetitions / cfg.threads + (t < (cfg.repetitions % cfg.threads) ? 1 : 0);
+                    for(int i=0; i<reps; i++) {
+                        for(unsigned j=0; j<SINGLE_OP_NUM; j++)
+                            rnd_out[j] = rapidyenc_crc_256pow(rnd_n[j]);
+                    }
+                });
+            }
+            for(auto& th : threads2) th.join();
+            auto stop2 = std::chrono::high_resolution_clock::now();
+            float us2 = std::chrono::duration_cast<std::chrono::microseconds>(stop2 - start).count();
+            double ms2 = us2 / 1000.0;
+            double speed2 = SINGLE_OP_NUM * cfg.repetitions;
+            speed2 = speed2 / us2;
+            std::cerr << "CRC32 256^n: " << speed2 << " Mop/s, time: " << ms2 << " ms (threads=" << cfg.threads << ")" << std::endl;
+        }
+#endif
+        return 0;
+    }
 
     // --- Encode benchmark ---
 #ifndef RAPIDYENC_DISABLE_ENCODE
