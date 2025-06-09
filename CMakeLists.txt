@@ -12,7 +12,10 @@ include(CheckCXXCompilerFlag)
 include(CheckIncludeFileCXX)
 include(CheckCXXSymbolExists)
 
-set(CMAKE_CXX_STANDARD 98)
+# Set C++ standard to 11 globally (required for std::thread)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE Release)
@@ -164,6 +167,12 @@ else()
 	endif()
 endif()
 
+# Add pthread for MinGW-w64 (required for std::thread)
+if(MINGW)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
+endif()
+
 add_library(rapidyenc OBJECT ${RAPIDYENC_SOURCES})
 set_property(TARGET rapidyenc PROPERTY POSITION_INDEPENDENT_CODE 1)  # needed for shared build
 
@@ -271,5 +280,9 @@ set_target_properties(rapidyenc_shared PROPERTIES OUTPUT_NAME rapidyenc ARCHIVE_
 add_executable(rapidyenc_cli tool/cli.c)
 target_link_libraries(rapidyenc_cli rapidyenc_static)
 add_executable(rapidyenc_bench tool/bench.cc)
-target_link_libraries(rapidyenc_bench rapidyenc_static pthread)
+target_link_libraries(rapidyenc_bench rapidyenc_static)
+# Link pthread only on non-Windows
+if(NOT WIN32)
+    target_link_libraries(rapidyenc_bench pthread)
+endif()
 target_compile_features(rapidyenc_bench PUBLIC cxx_std_11)
