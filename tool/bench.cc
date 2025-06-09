@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <iostream>
 #include <vector>
 #include <chrono>
@@ -161,7 +162,27 @@ int main(int argc, char** argv) {
                       << std::setw(10) << cfg.threads
                       << std::setw(18) << speed
                       << std::setw(10) << ms << std::endl;
-            article_length = thread_article_length[0];
+            // Verify all threads produced the same article_length
+            size_t ref_len = thread_article_length[0];
+            bool consistent = true;
+            for (int t = 1; t < cfg.threads; ++t) {
+                if (thread_article_length[t] != ref_len) {
+                    consistent = false;
+                    break;
+                }
+            }
+            if (!consistent) {
+                std::cerr << "Warning: Inconsistent encoded article lengths across threads: ";
+                for (int t = 0; t < cfg.threads; ++t) {
+                    std::cerr << thread_article_length[t];
+                    if (t < cfg.threads - 1) std::cerr << ", ";
+                }
+                std::cerr << std::endl;
+                // Use the minimum length for safety
+                article_length = *std::min_element(thread_article_length.begin(), thread_article_length.end());
+            } else {
+                article_length = ref_len;
+            }
             std::cout << std::flush;
         }
 #endif
