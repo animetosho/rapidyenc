@@ -138,7 +138,12 @@ int main(int argc, char **argv) {
         }
 #if defined(__unix__) || defined(__linux__) || defined(__APPLE__)
         // Restrict permissions to 0644 (rw-r--r--)
-        fchmod(fileno(outfile), 0644);
+        if (fchmod(fileno(outfile), 0644) == -1) {
+            fprintf(stderr, "error setting permissions on output file '%s': %s\n", outfile_name, strerror(errno));
+            if (infile && infile != stdin) fclose(infile);
+            fclose(outfile);
+            return EXIT_FAILURE;
+        }
 #endif
     }
 
