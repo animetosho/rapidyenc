@@ -118,6 +118,10 @@ int main(int argc, char **argv) {
             if(infile && infile != stdin) fclose(infile);
             return EXIT_FAILURE;
         }
+#if defined(__unix__) || defined(__linux__) || defined(__APPLE__)
+        // Restrict permissions to 0644 (rw-r--r--)
+        fchmod(fileno(outfile), 0644);
+#endif
     }
 
     // Allocate input buffer
