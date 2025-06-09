@@ -255,7 +255,7 @@ int main(int argc, char** argv) {
             std::vector<uint64_t> rnd_n(SINGLE_OP_NUM);
             std::vector<uint32_t> rnd_out(SINGLE_OP_NUM);
             for(auto& c : rnd_n)
-                c = ((rand() & 0xffff) << 20) | (rand() & 0xfffff);
+                c = ((rand() & 0xffff) << 20) | (rand() & 0xfffff);  // 36-bit random numbers
             start = std::chrono::high_resolution_clock::now();
             std::vector<std::thread> threads2;
             for(int t=0; t<cfg.threads; ++t) {
