@@ -61,28 +61,43 @@ int main(int argc, char **argv) {
     int encode = 0, decode = 0, crc_to_stdout = 0;
     const char *infile_name = NULL, *outfile_name = NULL;
     size_t buffer_size = 65536;
-    for(int i = 1; i < argc; ++i) {
+    int i = 1;
+    while (i < argc) {
         if(strcmp(argv[i], "--version") == 0) {
             printf("rapidyenc CLI version %s\n", RAPIDYENC_CLI_VERSION);
             print_rapidyenc_version_string(rapidyenc_version());
             return 0;
         }
-        if(strcmp(argv[i], "--encode") == 0) encode = 1;
-        else if(strcmp(argv[i], "--decode") == 0) decode = 1;
-        else if(strcmp(argv[i], "--infile") == 0 && i+1 < argc) infile_name = argv[++i];
-        else if(strcmp(argv[i], "--outfile") == 0 && i+1 < argc) outfile_name = argv[++i];
-        else if(strcmp(argv[i], "--crc-stdout") == 0) crc_to_stdout = 1;
-        else if(strcmp(argv[i], "--buffer-size") == 0 && i+1 < argc) {
+        if(strcmp(argv[i], "--encode") == 0) {
+            encode = 1;
+            ++i;
+        } else if(strcmp(argv[i], "--decode") == 0) {
+            decode = 1;
+            ++i;
+        } else if(strcmp(argv[i], "--infile") == 0 && i+1 < argc) {
+            infile_name = argv[++i];
+            ++i;
+        } else if(strcmp(argv[i], "--outfile") == 0 && i+1 < argc) {
+            outfile_name = argv[++i];
+            ++i;
+        } else if(strcmp(argv[i], "--crc-stdout") == 0) {
+            crc_to_stdout = 1;
+            ++i;
+        } else if(strcmp(argv[i], "--buffer-size") == 0 && i+1 < argc) {
             buffer_size = (size_t)strtoul(argv[++i], NULL, 10);
             if(buffer_size == 0) buffer_size = 65536;
-        }
-        else if(strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) return print_usage(argv[0]);
-        else if(argv[i][0] != '-') {
+            ++i;
+        } else if(strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            return print_usage(argv[0]);
+        } else if(argv[i][0] != '-') {
             // legacy positional: e|d infile outfile
             if(strcmp(argv[i], "e") == 0) encode = 1;
             else if(strcmp(argv[i], "d") == 0) decode = 1;
             else if(!infile_name) infile_name = argv[i];
             else if(!outfile_name) outfile_name = argv[i];
+            ++i;
+        } else {
+            ++i;
         }
     }
     if((encode && decode) || (!encode && !decode)) {
