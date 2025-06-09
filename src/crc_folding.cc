@@ -1,6 +1,6 @@
 // taken from zlib-ng / Intel's zlib patch, modified to remove zlib dependencies
 /*
- * Compute the CRC32 using a parallelized folding approach with the PCLMULQDQ 
+ * Compute the CRC32 using a parallelized folding approach with the PCLMULQDQ
  * instruction.
  *
  * A white paper describing this algorithm can be found at:
@@ -18,7 +18,7 @@
  */
 
 #include "crc_common.h"
- 
+
 #if (defined(__PCLMUL__) && defined(__SSSE3__) && defined(__SSE4_1__)) || (defined(_MSC_VER) && _MSC_VER >= 1600 && defined(PLATFORM_X86) && !defined(__clang__))
 #include <inttypes.h>
 #include <immintrin.h>
@@ -144,7 +144,7 @@ static uint32_t crc_fold(const unsigned char *src, long len, uint32_t initial) {
     // this is done by dividing the initial value by 2^480
     // the constant used here is reverse(2^-480)<<1 == 0xdfded7ec
     __m128i xmm_crc0 = _mm_clmulepi64_si128(_mm_cvtsi32_si128(~initial), _mm_cvtsi32_si128(0xdfded7ec), 0);
-    
+
     __m128i xmm_crc1 = _mm_setzero_si128();
     __m128i xmm_crc2 = _mm_setzero_si128();
     __m128i xmm_crc3 = _mm_setzero_si128();
@@ -170,10 +170,10 @@ static uint32_t crc_fold(const unsigned char *src, long len, uint32_t initial) {
     }
 
     while (len >= 64) {
-        xmm_t0 = _mm_load_si128((__m128i *)src);
-        xmm_t1 = _mm_load_si128((__m128i *)src + 1);
-        xmm_t2 = _mm_load_si128((__m128i *)src + 2);
-        xmm_t3 = _mm_load_si128((__m128i *)src + 3);
+        xmm_t0 = _mm_load_si128(&(((__m128i *)src)[0]));
+        xmm_t1 = _mm_load_si128(&(((__m128i *)src)[1]));
+        xmm_t2 = _mm_load_si128(&(((__m128i *)src)[2]));
+        xmm_t3 = _mm_load_si128(&(((__m128i *)src)[3]));
 
 #ifdef ENABLE_AVX512
         xmm_crc0 = do_one_fold_merge(xmm_crc0, xmm_t0);
@@ -199,9 +199,9 @@ static uint32_t crc_fold(const unsigned char *src, long len, uint32_t initial) {
     if (len >= 48) {
         len -= 48;
 
-        xmm_t0 = _mm_load_si128((__m128i *)src);
-        xmm_t1 = _mm_load_si128((__m128i *)src + 1);
-        xmm_t2 = _mm_load_si128((__m128i *)src + 2);
+        xmm_t0 = _mm_load_si128(&(((__m128i *)src)[0]));
+        xmm_t1 = _mm_load_si128(&(((__m128i *)src)[1]));
+        xmm_t2 = _mm_load_si128(&(((__m128i *)src)[2]));
 
         xmm_t3 = xmm_crc3;
 #ifdef ENABLE_AVX512
@@ -221,12 +221,12 @@ static uint32_t crc_fold(const unsigned char *src, long len, uint32_t initial) {
         if (len == 0)
             goto done;
 
-        xmm_crc_part = _mm_load_si128((__m128i *)src + 3);
+        xmm_crc_part = _mm_load_si128(&(((__m128i *)src)[3]));
     } else if (len >= 32) {
         len -= 32;
 
-        xmm_t0 = _mm_load_si128((__m128i *)src);
-        xmm_t1 = _mm_load_si128((__m128i *)src + 1);
+        xmm_t0 = _mm_load_si128(&(((__m128i *)src)[0]));
+        xmm_t1 = _mm_load_si128(&(((__m128i *)src)[1]));
 
         xmm_t2 = xmm_crc2;
         xmm_t3 = xmm_crc3;
@@ -245,11 +245,11 @@ static uint32_t crc_fold(const unsigned char *src, long len, uint32_t initial) {
         if (len == 0)
             goto done;
 
-        xmm_crc_part = _mm_load_si128((__m128i *)src + 2);
+        xmm_crc_part = _mm_load_si128(&(((__m128i *)src)[2]));
     } else if (len >= 16) {
         len -= 16;
 
-        xmm_t0 = _mm_load_si128((__m128i *)src);
+        xmm_t0 = _mm_load_si128(&(((__m128i *)src)[0]));
 
         xmm_t3 = xmm_crc3;
 #ifdef ENABLE_AVX512
@@ -264,11 +264,11 @@ static uint32_t crc_fold(const unsigned char *src, long len, uint32_t initial) {
         if (len == 0)
             goto done;
 
-        xmm_crc_part = _mm_load_si128((__m128i *)src + 1);
+        xmm_crc_part = _mm_load_si128(&(((__m128i *)src)[1]));
     } else {
         if (len == 0)
             goto done;
-        xmm_crc_part = _mm_load_si128((__m128i *)src);
+        xmm_crc_part = _mm_load_si128(&(((__m128i *)src)[0]));
     }
 
 partial:
@@ -368,11 +368,11 @@ static HEDLEY_ALWAYS_INLINE __m128i crc32_reduce(__m128i prod) {
 static uint32_t crc32_multiply_clmul(uint32_t a, uint32_t b) {
 	// do the actual multiply
 	__m128i prod = _mm_clmulepi64_si128(_mm_cvtsi32_si128(a), _mm_cvtsi32_si128(b), 0);
-	
+
 	// prepare product for reduction
 	prod = _mm_add_epi64(prod, prod); // bit alignment fix, due to CRC32 being bit-reversal
 	prod = _mm_slli_si128(prod, 4);   // straddle low/high halves across 64-bit boundary - this provides automatic truncation during reduction
-	
+
 	prod = crc32_reduce(prod);
 	return _mm_extract_epi32(prod, 2);
 }
@@ -429,7 +429,7 @@ static HEDLEY_ALWAYS_INLINE __m128i crc32_shift_clmul_mulred(unsigned pos, __m12
 	// this multiplies a 64-bit `prod` with a 32-bit CRC power
 	// compared with crc32_multiply_clmul, this only reduces the result to 64-bit, saving a multiply
 	__m128i coeff = _mm_cvtsi32_si128(crc_power_rev[pos]);
-	
+
 	const __m128i fold_const = _mm_set_epi32(0, 0x490d678d, 0, 0xf200aa66);
 	prod = _mm_clmulepi64_si128(prod, coeff, 0);
 	__m128i hi = _mm_clmulepi64_si128(prod, fold_const, 0x11);
@@ -438,41 +438,41 @@ static HEDLEY_ALWAYS_INLINE __m128i crc32_shift_clmul_mulred(unsigned pos, __m12
 
 static uint32_t crc32_shift_clmul(uint32_t crc1, uint32_t n) {
 	if(!n) return crc1;
-	
+
 	__m128i result = _mm_cvtsi32_si128(BSWAP32(crc1));
 	result = reverse_bits_epi8(result);
-	
+
 	// handle n < 32 with a shift
 	result = _mm_sll_epi64(result, _mm_cvtsi32_si128(n & 31));
 	n &= ~31;
-	
+
 	__m128i t;
 	if(n) {
 		// use a second accumulator to leverage some IPC from slow CLMUL
 		__m128i result2 = _mm_cvtsi32_si128(crc_power_rev[ctz32(n)]);
 		n &= n-1;
-		
+
 		if(n) {
 			// first multiply doesn't need reduction
 			result2 = _mm_clmulepi64_si128(result2, _mm_cvtsi32_si128(crc_power_rev[ctz32(n)]), 0);
 			n &= n-1;
-			
+
 			while(n) {
 				result = crc32_shift_clmul_mulred(ctz32(n), result);
 				n &= n-1;
-				
+
 				if(n) {
 					result2 = crc32_shift_clmul_mulred(ctz32(n), result2);
-					n &= n-1;
+				 n &= n-1;
 				}
 			}
 		}
-		
+
 		const __m128i fold_const = _mm_set_epi32(0, 0x490d678d, 0, 0xf200aa66);
-		
+
 		// merge two results
 		result = _mm_clmulepi64_si128(result, result2, 0);
-		
+
 		// do 128b reduction
 		t = _mm_unpackhi_epi32(result, _mm_setzero_si128());
 		// fold [127:96] -> [63:0]
@@ -486,13 +486,13 @@ static uint32_t crc32_shift_clmul(uint32_t crc1, uint32_t n) {
 		result = _mm_xor_si128(result, lo);
 #endif
 	}
-	
+
 	// do Barrett reduction back into 32-bit field
 	const __m128i reduction_const = _mm_set_epi32(0, 0x04c11db7, 1, 0x04d101df);
 	t = _mm_clmulepi64_si128(_mm_blend_epi16(_mm_setzero_si128(), result, 0x3c), reduction_const, 0);
 	t = _mm_clmulepi64_si128(t, reduction_const, 0x11);
 	result = _mm_xor_si128(t, result);
-	
+
 	result = reverse_bits_epi8(result);
 	return BSWAP32(_mm_cvtsi128_si32(result));
 }
