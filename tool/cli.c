@@ -60,6 +60,7 @@ int main(int argc, char **argv) {
     // Argument parsing
     int encode = 0, decode = 0, crc_to_stdout = 0;
     const char *infile_name = NULL, *outfile_name = NULL;
+    size_t buffer_size = 65536;
     for(int i = 1; i < argc; ++i) {
         if(strcmp(argv[i], "--version") == 0) {
             printf("rapidyenc CLI version %s\n", RAPIDYENC_CLI_VERSION);
@@ -71,6 +72,10 @@ int main(int argc, char **argv) {
         else if(strcmp(argv[i], "--infile") == 0 && i+1 < argc) infile_name = argv[++i];
         else if(strcmp(argv[i], "--outfile") == 0 && i+1 < argc) outfile_name = argv[++i];
         else if(strcmp(argv[i], "--crc-stdout") == 0) crc_to_stdout = 1;
+        else if(strcmp(argv[i], "--buffer-size") == 0 && i+1 < argc) {
+            buffer_size = (size_t)strtoul(argv[++i], NULL, 10);
+            if(buffer_size == 0) buffer_size = 65536;
+        }
         else if(strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) return print_usage(argv[0]);
         else if(argv[i][0] != '-') {
             // legacy positional: e|d infile outfile
@@ -116,9 +121,9 @@ int main(int argc, char **argv) {
     }
 
     // Allocate input buffer
-    void* data = malloc(BUFFER_SIZE);
+    void* data = malloc(buffer_size);
     if(!data) {
-        fprintf(stderr, "error allocating input buffer of size %d bytes\n", BUFFER_SIZE);
+        fprintf(stderr, "error allocating input buffer of size %zu bytes\n", buffer_size);
         fclose(infile);
         fclose(outfile);
         return EXIT_FAILURE;
@@ -135,7 +140,7 @@ int main(int argc, char **argv) {
     if(encode) {
         // --- Encoding mode ---
         // Allocate output buffer large enough for encoded data
-        size_t output_size = rapidyenc_encode_max_length(BUFFER_SIZE, LINE_SIZE);
+        size_t output_size = rapidyenc_encode_max_length(buffer_size, LINE_SIZE);
         void* output = malloc(output_size);
         if(!output) {
             fprintf(stderr, "error allocating output buffer of size %zu bytes\n", output_size);
@@ -149,9 +154,9 @@ int main(int argc, char **argv) {
         int column = 0;
         while(1) {
             // Read a chunk from input
-            size_t read = fread(data, 1, BUFFER_SIZE, infile);
+            size_t read = fread(data, 1, buffer_size, infile);
             int eof = feof(infile);
-            if(read < BUFFER_SIZE && !eof) {
+            if(read < buffer_size && !eof) {
                 if(ferror(infile)) {
                     fprintf(stderr, "error reading input\n");
                 } else {
@@ -185,12 +190,12 @@ int main(int argc, char **argv) {
         RapidYencDecoderState state = RYDEC_STATE_CRLF;
         while(1) {
             // Read a chunk from input
-            size_t read = fread(data, 1, BUFFER_SIZE, infile);
+            size_t read = fread(data, 1, buffer_size, infile);
             RapidYencDecoderEnd ended;
             void* in_ptr = data;
             void* out_ptr = data;
             int eof = feof(infile);
-            if(read < BUFFER_SIZE && !eof) {
+            if(read < buffer_size && !eof) {
                 if(ferror(infile)) {
                     fprintf(stderr, "error reading input\n");
                 } else {
