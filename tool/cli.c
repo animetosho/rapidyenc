@@ -27,6 +27,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#if defined(__unix__) || defined(__linux__) || defined(__APPLE__)
+#include <sys/stat.h>
+#endif
 
 #include "../rapidyenc.h"
 
