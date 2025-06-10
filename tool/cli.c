@@ -103,7 +103,12 @@ int main(int argc, char **argv) {
             ++i;
         }
     }
-    if((encode && decode) || (!encode && !decode)) {
+    if(encode && decode) {
+        fprintf(stderr, "Error: Both --encode and --decode cannot be specified simultaneously.\n");
+        return print_usage(argv[0]);
+    }
+    if(!encode && !decode) {
+        fprintf(stderr, "Error: Either --encode or --decode must be specified.\n");
         return print_usage(argv[0]);
     }
 
