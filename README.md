@@ -52,6 +52,7 @@ Functions documented in the [header file](rapidyenc.h).
 * [node-yencode](https://github.com/animetosho/node-yencode): for NodeJS/Bun
 * [go-yencode](https://github.com/mnightingale/go-yencode): for Golang
 * [sabctools](https://github.com/sabnzbd/sabctools): for Python (Sabnzbd specific binding)
+* [RapidYencSharp](https://github.com/nzbdav-dev/RapidYencSharp): for C#/.NET
 
 Algorithm
 =========
