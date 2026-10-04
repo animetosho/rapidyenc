@@ -206,7 +206,7 @@ namespace RapidYenc {
 #   include <sys/auxv.h>
 #   if defined(__FreeBSD__) || defined(__OpenBSD__)
 static unsigned long getauxval(unsigned long cap) {
-	unsigned long ret;
+	unsigned long ret = 0;
 	elf_aux_info(cap, &ret, sizeof(ret));
 	return ret;
 }

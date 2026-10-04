@@ -21,7 +21,7 @@
 bool RapidYenc::cpu_supports_neon() {
 # if defined(AT_HWCAP)
 #  if defined(__FreeBSD__) || defined(__OpenBSD__)
-	unsigned long supported;
+	unsigned long supported = 0;
 	elf_aux_info(AT_HWCAP, &supported, sizeof(supported));
 #   ifdef __aarch64__
 	return supported & HWCAP_ASIMD;
@@ -184,7 +184,7 @@ int RapidYenc::cpu_supports_crc_isa() {
 # endif
 bool RapidYenc::cpu_supports_rvv() {
 # if defined(AT_HWCAP)
-	unsigned long ret;
+	unsigned long ret = 0;
 #  if defined(__FreeBSD__) || defined(__OpenBSD__)
 	elf_aux_info(AT_HWCAP, &ret, sizeof(ret));
 #  else
